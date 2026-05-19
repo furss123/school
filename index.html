@@ -3,23 +3,14 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>학생 성적 조회 및 분석 보고서</title>
+    <title>남악고 1학년 성적 조회 및 분석 보고서</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <style>
         @page { size: A4; margin: 0; }
         body { font-family: 'Malgun Gothic', sans-serif; font-size: 12px; line-height: 1.4; margin: 0; padding: 0; background: #f4f6fb; }
         
-        /* 상단 중앙 고정 인쇄 버튼 영역 */
-        .global-print-area { text-align: center; margin: 20px 0; display: none; }
-        .print-btn { 
-            background: #1e293b; padding: 14px 40px; font-size: 16px; color: white; 
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background 0.2s;
-        }
-        .print-btn:hover { background: #0f172a; }
-
         /* 대시보드 및 입력창 영역 */
-        .search-container { max-width: 950px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .search-container { max-width: 950px; margin: 20px auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         
         /* 업로드 영역 */
         .upload-section { margin-top: 15px; margin-bottom: 25px; }
@@ -45,8 +36,18 @@
         }
         .search-btn:hover { background: #2563eb; }
 
+        /* 인쇄 버튼 영역 */
+        .global-print-area { text-align: center; margin-top: 25px; margin-bottom: 5px; display: none; }
+        .print-btn { 
+            background: #1e293b; padding: 14px 40px; font-size: 16px; color: white; 
+            border: none; border-radius: 10px; font-weight: bold; cursor: pointer; 
+            display: inline-flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background 0.2s;
+        }
+        .print-btn:hover { background: #0f172a; }
+
         /* 과목별 기본 정보 대시보드 섹션 */
-        .stats-dashboard { display: none; margin-top: 30px; padding-top: 20px; border-top: 2px solid #f1f5f9; }
+        .stats-dashboard { display: none; margin-top: 25px; padding-top: 20px; border-top: 2px solid #f1f5f9; }
         .stats-dashboard h3 { font-size: 17px; color: #1e293b; margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
         .stats-dashboard h3::before { content: ''; display: inline-block; width: 4px; height: 18px; background: #3b82f6; border-radius: 2px; }
         .stats-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
@@ -100,10 +101,6 @@
 </head>
 <body>
 
-    <div id="globalPrintArea" class="global-print-area no-print">
-        <button class="print-btn" onclick="window.print()">인쇄</button>
-    </div>
-
     <div class="search-container no-print">
         <h2 style="margin-top:0; color:#3b82f6; font-size: 22px;">학생 성적 조회 시스템 (2026 고교학점제 반영)</h2>
         
@@ -142,6 +139,15 @@
             </button>
         </div>
 
+        <div id="globalPrintArea" class="global-print-area no-print">
+            <button class="print-btn" onclick="window.print()">
+                <svg style="width:20px; height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                </svg>
+                결과 인쇄하기
+            </button>
+        </div>
+
         <div id="statsDashboard" class="stats-dashboard">
             <h3>1학년 중간고사 결과 기본 정보</h3>
             <table class="stats-table">
@@ -170,22 +176,22 @@
         <div class="page page-1">
             <h1>2026학년도 1학기 중간고사 결과 보고서</h1>
             <div class="student-info">
-                <div id="infoStudentText">학생 정보 로딩중...</div>
-                <div>평균등급: <span id="infoAvgGrade">0.00</span></div>
+                <div class="infoStudentText">학생 정보 로딩중...</div>
+                <div>평균등급: <span class="infoAvgGrade">0.00</span></div>
             </div>
             
-            <table id="mainScoreTable">
+            <table class="mainScoreTable">
                 <thead>
-                    <tr id="mainTableHead"><th style="width: 15%;">교과명</th></tr>
+                    <tr class="mainTableHead"><th style="width: 15%;">교과명</th></tr>
                 </thead>
                 <tbody>
-                    <tr id="rowUnit"><th class="row-label">단위수</th></tr>
-                    <tr id="rowScore" style="height: 35px;"><th class="row-label">원점수</th></tr>
-                    <tr id="rowRank"><th class="row-label">석차(동석차수)</th></tr>
-                    <tr id="rowInterRank"><th class="row-label">중간석차</th></tr>
-                    <tr id="rowGrade" style="height: 35px; font-weight: bold;"><th class="row-label">등급</th></tr>
-                    <tr id="rowDiffUp"><th class="row-label">윗등급 차</th></tr>
-                    <tr id="rowDiffDown"><th class="row-label">아랫등급 차</th></tr>
+                    <tr class="rowUnit"><th class="row-label">단위수</th></tr>
+                    <tr class="rowScore" style="height: 35px;"><th class="row-label">원점수</th></tr>
+                    <tr class="rowRank"><th class="row-label">석차(동석차수)</th></tr>
+                    <tr class="rowInterRank"><th class="row-label">중간석차</th></tr>
+                    <tr class="rowGrade" style="height: 35px; font-weight: bold;"><th class="row-label">등급</th></tr>
+                    <tr class="rowDiffUp"><th class="row-label">윗등급 차</th></tr>
+                    <tr class="rowDiffDown"><th class="row-label">아랫등급 차</th></tr>
                 </tbody>
             </table>
             
@@ -204,35 +210,35 @@
             </div>
             
             <h3>등급별 최하점수 (5등급 컷 - <span class="total-count">-</span>명 기준)</h3>
-            <table id="cutLineTable">
+            <table class="cutLineTable">
                 <thead>
-                    <tr id="cutTableHead"><th class="row-label">구분</th></tr>
+                    <tr class="cutTableHead"><th class="row-label">구분</th></tr>
                 </thead>
                 <tbody>
-                    <tr id="rowCut1"><th class="row-label">1등급(10%)</th></tr>
-                    <tr id="rowCut2"><th class="row-label">2등급(34%)</th></tr>
-                    <tr id="rowCut3"><th class="row-label">3등급(66%)</th></tr>
-                    <tr id="rowCut4"><th class="row-label">4등급(90%)</th></tr>
+                    <tr class="rowCut1"><th class="row-label">1등급(10%)</th></tr>
+                    <tr class="rowCut2"><th class="row-label">2등급(34%)</th></tr>
+                    <tr class="rowCut3"><th class="row-label">3등급(66%)</th></tr>
+                    <tr class="rowCut4"><th class="row-label">4등급(90%)</th></tr>
                 </tbody>
             </table>
             
             <h3>목표 점수 (한 등급 올리기 기준)</h3>
-            <table id="goalScoreTable">
+            <table class="goalScoreTable">
                 <thead>
-                    <tr id="goalTableHead"><th class="row-label">구분</th></tr>
+                    <tr class="goalTableHead"><th class="row-label">구분</th></tr>
                 </thead>
                 <tbody>
-                    <tr id="rowGoal" style="background-color: #fff9c4; font-weight: bold; border: 2px solid #fbc02d;"><th class="row-label">목표 점수</th></tr>
+                    <tr class="rowGoal" style="background-color: #fff9c4; font-weight: bold; border: 2px solid #fbc02d;"><th class="row-label">목표 점수</th></tr>
                 </tbody>
             </table>
             
             <h3>과목별 최고점수</h3>
-            <table id="maxScoreTable">
+            <table class="maxScoreTable">
                 <thead>
-                    <tr id="maxTableHead"><th class="row-label">구분</th></tr>
+                    <tr class="maxTableHead"><th class="row-label">구분</th></tr>
                 </thead>
                 <tbody>
-                    <tr id="rowMax" style="background-color: #eee; font-weight: bold;"><th class="row-label">최고점수</th></tr>
+                    <tr class="rowMax" style="background-color: #eee; font-weight: bold;"><th class="row-label">최고점수</th></tr>
                 </tbody>
             </table>
         </div>
@@ -241,11 +247,11 @@
             <h1>내 성적 주변 성적 분포</h1>
             <p style="text-align: right; font-size: 10px; margin: 0 0 5px 0;">(※ 데이터가 없는 구간은 빈칸으로 표시되며, 내 점수 기준 위로는 오름차순, 아래로는 내림차순 정렬됩니다.)</p>
             
-            <table id="distributionTable">
+            <table class="distributionTable">
                 <thead>
-                    <tr id="distTableHead"><th style="width: 12%;">구분</th></tr>
+                    <tr class="distTableHead"><th style="width: 12%;">구분</th></tr>
                 </thead>
-                <tbody id="distTableBody"></tbody>
+                <tbody class="distTableBody"></tbody>
             </table>
         </div>
     </div>
@@ -315,7 +321,6 @@ function processAllGrades() {
 
         let i = 0;
         let currentRank = 1;
-        let gradeCutScores = { 1: -1, 2: -1, 3: -1, 4: -1, 5: -1 };
 
         while (i < rawScores.length) {
             let j = i;
@@ -461,6 +466,7 @@ function uploadExcel(input) {
                 
                 setUploadState("데이터 분석 완료!", true, file.name);
                 displayGeneralStats(); 
+                clearPrintContainer(); // 새 데이터 업로드 시 기존 출력물 제거
             } else {
                 isFileUploaded = false;
                 studentData = [];
@@ -500,7 +506,16 @@ function clearPrintContainer() {
     document.getElementById('globalPrintArea').style.display = 'none';
 }
 
-function populateTemplate(studentIdStr) {
+// 헬퍼 함수: 특정 요소 안에 th, td 자식 추가
+function appendThNode(parentEl, text) { 
+    const th = document.createElement('th'); th.textContent = text; parentEl.appendChild(th); 
+}
+function appendTdNode(parentEl, text) { 
+    const td = document.createElement('td'); td.textContent = text; parentEl.appendChild(td); 
+}
+
+// 핵심 데이터 삽입 함수 (이제 원본이 아닌 '복사본 DOM 객체'를 받아 수정합니다)
+function populateTemplate(studentIdStr, clonePage) {
     if (!isFileUploaded || studentData.length === 0) return false;
 
     const student = studentData.find(s => String(s['학번']) === studentIdStr);
@@ -509,21 +524,27 @@ function populateTemplate(studentIdStr) {
     const subjects = getSubjects(student);
     const totalStudents = studentData.length;
 
-    document.querySelectorAll('#reportTemplate .total-count').forEach(el => el.textContent = totalStudents);
+    clonePage.querySelectorAll('.total-count').forEach(el => el.textContent = totalStudents);
 
     let strId = String(studentIdStr);
     let sGrade = student['학년'] || strId.charAt(0);
     let sClass = student['반'] || Number(strId.substring(1, strId.length - 2));
     let sNum = student['번호'] || Number(strId.substring(strId.length - 2));
 
-    document.getElementById('infoStudentText').textContent = `${sGrade}학년 ${sClass}반 ${sNum}번 이름 ${student['이름']} 학생의 성적`;
-    resetMainTables();
+    clonePage.querySelector('.infoStudentText').textContent = `${sGrade}학년 ${sClass}반 ${sNum}번 이름 ${student['이름']} 학생의 성적`;
 
     let totalWeight = 0;
     let weightedGradeSum = 0;
 
     subjects.forEach(subject => {
-        appendTh('mainTableHead', subject); appendTh('cutTableHead', subject); appendTh('goalTableHead', subject); appendTh('maxScoreTable', subject); appendTh('distTableHead', subject);
+        // 복제된 테이블 헤더들에 과목명 추가
+        appendThNode(clonePage.querySelector('.mainTableHead'), subject); 
+        appendThNode(clonePage.querySelector('.cutTableHead'), subject); 
+        appendThNode(clonePage.querySelector('.goalTableHead'), subject); 
+        appendThNode(clonePage.querySelector('.maxTableHead'), subject); 
+        if (clonePage.querySelector('.distTableHead')) {
+            appendThNode(clonePage.querySelector('.distTableHead'), subject);
+        }
 
         // 캐시된 엔진 처리 데이터 가져오기
         const pData = processedGradesCache[studentIdStr][subject];
@@ -552,59 +573,68 @@ function populateTemplate(studentIdStr) {
             }
         }
 
-        appendTd('rowUnit', unit); 
-        appendTd('rowScore', pData.score.toFixed(2)); 
-        appendTd('rowRank', pData.rankStr); // "2(7)" 형태 표기 반영
-        appendTd('rowInterRank', pData.interRank); // 중간석차
-        appendTd('rowGrade', pData.grade); 
-        appendTd('rowDiffUp', diffUp); 
-        appendTd('rowDiffDown', diffDown);
-        appendTd('rowCut1', stats.cut1); appendTd('rowCut2', stats.cut2); appendTd('rowCut3', stats.cut3); appendTd('rowCut4', stats.cut4);
-        appendTd('rowGoal', goalValue); appendTd('rowMax', stats.max);
+        // 복제된 행(tr)들에 셀(td) 데이터 추가
+        appendTdNode(clonePage.querySelector('.rowUnit'), unit); 
+        appendTdNode(clonePage.querySelector('.rowScore'), pData.score.toFixed(2)); 
+        appendTdNode(clonePage.querySelector('.rowRank'), pData.rankStr); 
+        appendTdNode(clonePage.querySelector('.rowInterRank'), pData.interRank); 
+        appendTdNode(clonePage.querySelector('.rowGrade'), pData.grade); 
+        appendTdNode(clonePage.querySelector('.rowDiffUp'), diffUp); 
+        appendTdNode(clonePage.querySelector('.rowDiffDown'), diffDown);
+        appendTdNode(clonePage.querySelector('.rowCut1'), stats.cut1); 
+        appendTdNode(clonePage.querySelector('.rowCut2'), stats.cut2); 
+        appendTdNode(clonePage.querySelector('.rowCut3'), stats.cut3); 
+        appendTdNode(clonePage.querySelector('.rowCut4'), stats.cut4);
+        appendTdNode(clonePage.querySelector('.rowGoal'), goalValue); 
+        appendTdNode(clonePage.querySelector('.rowMax'), stats.max);
     });
 
-    document.getElementById('infoAvgGrade').textContent = (weightedGradeSum / totalWeight).toFixed(2);
+    clonePage.querySelector('.infoAvgGrade').textContent = (weightedGradeSum / totalWeight).toFixed(2);
     
-    // 성적 분포 로직
-    const distBody = document.getElementById('distTableBody'); distBody.innerHTML = '';
-    let upperRows = [[], [], [], [], []]; 
-    let lowerRows = [[], [], [], [], []]; 
+    // 성적 분포 로직 (2페이지가 있을 경우에만 실행)
+    const distBody = clonePage.querySelector('.distTableBody'); 
+    if (distBody) {
+        distBody.innerHTML = '';
+        let upperRows = [[], [], [], [], []]; 
+        let lowerRows = [[], [], [], [], []]; 
 
-    subjects.forEach(subject => {
-        const pData = processedGradesCache[studentIdStr][subject];
-        const allScores = subjectStatsCache[subject].allScoresSorted;
-        const myIdx = allScores.indexOf(pData.score);
-        let ups = allScores.slice(0, myIdx).reverse(); 
-        let downs = allScores.slice(myIdx + pData.tieCount); // 본인과 동점자들을 제외한 아래점수들
+        subjects.forEach(subject => {
+            const pData = processedGradesCache[studentIdStr][subject];
+            const allScores = subjectStatsCache[subject].allScoresSorted;
+            const myIdx = allScores.indexOf(pData.score);
+            let ups = allScores.slice(0, myIdx).reverse(); 
+            let downs = allScores.slice(myIdx + pData.tieCount); 
 
-        for(let i=0; i<5; i++) { upperRows[4-i].push(ups[i] !== undefined ? ups[i].toFixed(2) : ''); }
-        for(let i=0; i<5; i++) { lowerRows[i].push(downs[i] !== undefined ? downs[i].toFixed(2) : ''); }
-    });
+            for(let i=0; i<5; i++) { upperRows[4-i].push(ups[i] !== undefined ? ups[i].toFixed(2) : ''); }
+            for(let i=0; i<5; i++) { lowerRows[i].push(downs[i] !== undefined ? downs[i].toFixed(2) : ''); }
+        });
 
-    for(let i=0; i<5; i++) {
-        let tr = document.createElement('tr'); tr.innerHTML = `<td class="symbol-up">▴</td>`;
-        upperRows[i].forEach(val => { tr.innerHTML += `<td>${val}</td>`; }); distBody.appendChild(tr);
-    }
-    let myTr = document.createElement('tr'); myTr.className = 'my-score-row'; myTr.innerHTML = `<td>내 점수</td>`;
-    subjects.forEach(subject => { myTr.innerHTML += `<td>${processedGradesCache[studentIdStr][subject].score.toFixed(2)}</td>`; }); distBody.appendChild(myTr);
-    for(let i=0; i<5; i++) {
-        let tr = document.createElement('tr'); tr.innerHTML = `<td class="symbol-down">▾</td>`;
-        lowerRows[i].forEach(val => { tr.innerHTML += `<td>${val}</td>`; }); distBody.appendChild(tr);
+        for(let i=0; i<5; i++) {
+            let tr = document.createElement('tr'); tr.innerHTML = `<td class="symbol-up">▴</td>`;
+            upperRows[i].forEach(val => { tr.innerHTML += `<td>${val}</td>`; }); distBody.appendChild(tr);
+        }
+        let myTr = document.createElement('tr'); myTr.className = 'my-score-row'; myTr.innerHTML = `<td>내 점수</td>`;
+        subjects.forEach(subject => { myTr.innerHTML += `<td>${processedGradesCache[studentIdStr][subject].score.toFixed(2)}</td>`; }); distBody.appendChild(myTr);
+        for(let i=0; i<5; i++) {
+            let tr = document.createElement('tr'); tr.innerHTML = `<td class="symbol-down">▾</td>`;
+            lowerRows[i].forEach(val => { tr.innerHTML += `<td>${val}</td>`; }); distBody.appendChild(tr);
+        }
     }
     return true;
 }
 
-function cloneReport(isRangeSearch) {
+// 템플릿 복제 함수
+function createFreshTemplate(isRangeSearch) {
     const template = document.getElementById('reportTemplate');
     const clone = template.cloneNode(true);
     clone.style.display = 'block';
-    clone.removeAttribute('id');
+    clone.removeAttribute('id'); // 복사본의 id 충돌 방지
+    
+    // 구간 조회일 경우 분포표(2페이지) 삭제 옵션
     if (isRangeSearch) {
         const page2 = clone.querySelector('.page-2');
         if (page2) page2.remove();
     }
-    const elementsWithId = clone.querySelectorAll('[id]');
-    elementsWithId.forEach(el => el.removeAttribute('id'));
     return clone;
 }
 
@@ -612,10 +642,18 @@ function searchSingleStudent() {
     if (!isFileUploaded || studentData.length === 0) { alert("엑셀 성적 파일을 먼저 등록해주세요."); return; }
     const studentId = document.getElementById('studentId').value.trim();
     if (!studentId) { alert("학번을 입력해주세요."); return; }
-    if (!populateTemplate(studentId)) { alert("해당 학번의 학생을 찾을 수 없습니다."); return; }
+
     const printContainer = document.getElementById('printContainer');
-    printContainer.innerHTML = ''; 
-    printContainer.appendChild(cloneReport(false));
+    printContainer.innerHTML = ''; // 기존 결과 지우기 (새로고침 효과)
+
+    const myTemplate = createFreshTemplate(false);
+
+    if (!populateTemplate(studentId, myTemplate)) { 
+        alert("해당 학번의 학생을 찾을 수 없습니다."); 
+        return; 
+    }
+    
+    printContainer.appendChild(myTemplate);
     document.getElementById('globalPrintArea').style.display = 'block';
 }
 
@@ -624,46 +662,32 @@ function searchStudentRange() {
     const startIdStr = document.getElementById('startStudentId').value.trim();
     const endIdStr = document.getElementById('endStudentId').value.trim();
     if (!startIdStr || !endIdStr) { alert("시작 학번과 끝 학번을 모두 입력해주세요."); return; }
+    
     const startId = parseInt(startIdStr, 10);
     const endId = parseInt(endIdStr, 10);
     if (isNaN(startId) || isNaN(endId) || startId > endId) { alert("올바른 학번 구간을 입력해주세요."); return; }
 
-    const targetStudents = [];
+    const printContainer = document.getElementById('printContainer');
+    printContainer.innerHTML = ''; // 기존 결과 지우기 (새로고침 효과)
+    
+    let addedCount = 0;
+    
     for (let id = startId; id <= endId; id++) {
         const student = studentData.find(s => parseInt(s['학번'], 10) === id);
-        if (student) targetStudents.push(student);
+        if (student) {
+            const rangeTemplate = createFreshTemplate(true);
+            populateTemplate(String(student['학번']), rangeTemplate);
+            printContainer.appendChild(rangeTemplate);
+            addedCount++;
+        }
     }
-    if (targetStudents.length === 0) { alert("해당 구간 내에 학생 데이터가 없습니다."); return; }
-    const printContainer = document.getElementById('printContainer');
-    printContainer.innerHTML = '';
-    targetStudents.forEach(student => {
-        populateTemplate(String(student['학번']));
-        printContainer.appendChild(cloneReport(true));
-    });
+    
+    if (addedCount === 0) { 
+        alert("해당 구간 내에 학생 데이터가 없습니다."); 
+        return; 
+    }
+    
     document.getElementById('globalPrintArea').style.display = 'block';
-}
-
-function appendTh(targetId, text) { const th = document.createElement('th'); th.textContent = text; document.getElementById(targetId).appendChild(th); }
-function appendTd(targetId, text) { const td = document.createElement('td'); td.textContent = text; document.getElementById(targetId).appendChild(td); }
-
-function resetMainTables() {
-    document.getElementById('mainTableHead').innerHTML = '<th style="width: 15%;">교과명</th>'; 
-    document.getElementById('cutTableHead').innerHTML = '<th class="row-label">구분</th>';
-    document.getElementById('goalTableHead').innerHTML = '<th class="row-label">구분</th>'; 
-    document.getElementById('maxScoreTable').innerHTML = '<thead><tr id="maxTableHead"><th class="row-label">구분</th></tr></thead><tbody><tr id="rowMax" style="background-color: #eee; font-weight: bold;"><th class="row-label">최고점수</th></tr></tbody>';
-    document.getElementById('distTableHead').innerHTML = '<th style="width: 12%;">구분</th>';
-    document.getElementById('rowUnit').innerHTML = '<th class="row-label">단위수</th>'; 
-    document.getElementById('rowScore').innerHTML = '<th class="row-label">원점수</th>';
-    document.getElementById('rowRank').innerHTML = '<th class="row-label">석차(동석차수)</th>'; 
-    document.getElementById('rowInterRank').innerHTML = '<th class="row-label">중간석차</th>'; 
-    document.getElementById('rowGrade').innerHTML = '<th class="row-label">등급</th>';
-    document.getElementById('rowDiffUp').innerHTML = '<th class="row-label">윗등급 차</th>'; 
-    document.getElementById('rowDiffDown').innerHTML = '<th class="row-label">아랫등급 차</th>';
-    document.getElementById('rowCut1').innerHTML = '<th class="row-label">1등급(10%)</th>'; 
-    document.getElementById('rowCut2').innerHTML = '<th class="row-label">2등급(34%)</th>';
-    document.getElementById('rowCut3').innerHTML = '<th class="row-label">3등급(66%)</th>'; 
-    document.getElementById('rowCut4').innerHTML = '<th class="row-label">4등급(90%)</th>';
-    document.getElementById('rowGoal').innerHTML = '<th class="row-label">목표 점수</th>';
 }
 
 document.getElementById('studentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') searchSingleStudent(); });
@@ -673,5 +697,3 @@ document.getElementById('endStudentId').addEventListener('keydown', function(e) 
 
 </body>
 </html>
-
-```
