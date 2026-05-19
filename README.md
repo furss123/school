@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>학생 성적 조회 및 분석 보고서</title>
+    <title>남악고등학교 1학년 성적분석 보고서</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <style>
         @page { size: A4; margin: 0; }
