@@ -284,6 +284,29 @@
     </div>
 
 <script>
+// #region agent log
+const DEBUG_BUILD_ID = 'school-demo-v2-ca3adf';
+function debugLog(logLocation, message, data, hypothesisId) {
+    fetch('http://127.0.0.1:7514/ingest/21b3d564-d049-4f4d-89df-078721ff39be', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'ca3adf' },
+        body: JSON.stringify({
+            sessionId: 'ca3adf',
+            runId: 'pre-fix',
+            hypothesisId,
+            location: logLocation,
+            message,
+            data: Object.assign({ buildId: DEBUG_BUILD_ID, pageUrl: window.location.href }, data || {}),
+            timestamp: Date.now()
+        })
+    }).catch(function() {});
+}
+window.addEventListener('error', function(e) {
+    debugLog('index.html:error', 'uncaught error', { msg: e.message, line: e.lineno, col: e.colno }, 'H5');
+});
+debugLog('index.html:boot', 'script parsed', { hasLoadDemo: typeof loadDemoData }, 'H1');
+// #endregion
+
 let studentData = [];
 let isFileUploaded = false;
 let isDemoData = false;
@@ -327,14 +350,28 @@ function generateDemoStudentData() {
 function applyLoadedStudentData(sourceLabel, isDemo) {
     isDemoData = isDemo;
     processAllGrades();
+    // #region agent log
+    debugLog('index.html:applyLoadedStudentData', 'after processAllGrades', {
+        studentCount: studentData.length,
+        cacheKeys: Object.keys(processedGradesCache).length,
+        statsSubjects: Object.keys(subjectStatsCache).length,
+        isDemo: isDemo
+    }, 'H3');
+    // #endregion
     setUploadState(isDemo ? '예시 데이터 적용됨' : '데이터 분석 완료!', true, sourceLabel);
     displayGeneralStats();
     clearPrintContainer();
 }
 
 function loadDemoData() {
+    // #region agent log
+    debugLog('index.html:loadDemoData', 'loadDemoData start', {}, 'H1');
+    // #endregion
     studentData = generateDemoStudentData();
     isFileUploaded = true;
+    // #region agent log
+    debugLog('index.html:loadDemoData', 'demo generated', { count: studentData.length, sampleId: studentData[0] && studentData[0]['학번'] }, 'H1');
+    // #endregion
     applyLoadedStudentData(`가상 예시 (${studentData.length}명 · 1~10반)`, true);
 }
 
@@ -480,7 +517,15 @@ function processAllGrades() {
 }
 
 function displayGeneralStats() {
-    if (studentData.length === 0) return;
+    // #region agent log
+    debugLog('index.html:displayGeneralStats', 'entry', { studentCount: studentData.length }, 'H4');
+    // #endregion
+    if (studentData.length === 0) {
+        // #region agent log
+        debugLog('index.html:displayGeneralStats', 'early return empty data', {}, 'H4');
+        // #endregion
+        return;
+    }
     
     const subjects = getSubjects(studentData[0]);
     
@@ -512,7 +557,15 @@ function displayGeneralStats() {
         appendStatsTd('statsRowCut4', stats.cut4);
     });
 
-    document.getElementById('statsDashboard').style.display = 'block';
+    const dash = document.getElementById('statsDashboard');
+    dash.style.display = 'block';
+    // #region agent log
+    debugLog('index.html:displayGeneralStats', 'dashboard shown', {
+        subjectCount: subjects.length,
+        display: dash.style.display,
+        hasDemoBanner: !!document.getElementById('demoBanner')
+    }, 'H4');
+    // #endregion
 }
 
 function appendStatsTd(rowId, text, className = '') {
@@ -770,7 +823,12 @@ document.getElementById('studentId').addEventListener('keydown', function(e) { i
 document.getElementById('startStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('endStudentId').focus(); });
 document.getElementById('endStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') searchStudentRange(); });
 
-document.addEventListener('DOMContentLoaded', loadDemoData);
+document.addEventListener('DOMContentLoaded', function() {
+    // #region agent log
+    debugLog('index.html:DOMContentLoaded', 'fired', { readyState: document.readyState }, 'H1');
+    // #endregion
+    loadDemoData();
+});
 </script>
 
 </body>
