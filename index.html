@@ -58,6 +58,22 @@
         .highlight-blue { color: #2563eb; font-weight: bold; }
         .highlight-red { color: #dc2626; font-weight: bold; }
 
+        .demo-banner {
+            margin-bottom: 18px; padding: 14px 18px; border-radius: 12px;
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            border: 1px solid #bfdbfe; color: #1e3a5f;
+        }
+        .demo-banner strong { color: #1d4ed8; }
+        .demo-banner p { margin: 6px 0 0; font-size: 13px; color: #475569; line-height: 1.5; }
+        .demo-examples {
+            margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            font-size: 12px; color: #64748b;
+        }
+        .demo-chip {
+            display: inline-block; padding: 4px 10px; border-radius: 999px;
+            background: #fff; border: 1px solid #cbd5e1; color: #334155; font-weight: 600;
+        }
+
         /* 보고서 페이지 스타일 */
         .report-wrapper { display: none; margin-top: 30px; }
         /* 인쇄 시 각 학생의 문서가 강제로 나뉘도록 설정 */
@@ -103,6 +119,17 @@
 
     <div class="search-container no-print">
         <h2 style="margin-top:0; color:#3b82f6; font-size: 22px;">학생 성적 조회 시스템 (2026 고교학점제 반영)</h2>
+
+        <div id="demoBanner" class="demo-banner">
+            <strong>예시 데이터</strong> — 처음 열면 1학년 1~10반 가상 학생(반당 25명)이 자동 적용됩니다.
+            <p>실제 엑셀을 올리면 예시는 교체됩니다. 학번 <strong>1101</strong>(1반 1번)으로 조회해 보세요.</p>
+            <div class="demo-examples">
+                <span class="demo-chip">1101 · 1반 1번</span>
+                <span class="demo-chip">3501 · 5반 1번</span>
+                <span class="demo-chip">10001 · 10반 1번</span>
+                <span class="demo-chip">1101~1125 · 1반 구간</span>
+            </div>
+        </div>
         
         <div class="upload-section">
             <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="uploadExcel(this)" style="display:none;">
@@ -258,7 +285,58 @@
 
 <script>
 let studentData = [];
-let isFileUploaded = false; 
+let isFileUploaded = false;
+let isDemoData = false;
+
+const DEMO_SUBJECTS = ['국어', '수학', '영어', '한국사', '통합사회', '통합과학'];
+const DEMO_LAST_NAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임'];
+const DEMO_FIRST_NAMES = ['민준', '서연', '도윤', '지우', '예준', '하은', '주원', '지민', '시우', '수아', '현우', '지아', '건우', '서윤', '우진', '채원', '선우', '유나', '연우', '다은'];
+
+function buildStudentId(classNum, studentNum) {
+    if (classNum < 10) return `1${classNum}${String(studentNum).padStart(2, '0')}`;
+    return `10${String(studentNum).padStart(2, '0')}`;
+}
+
+function demoScoreFor(classNum, studentNum, subjectIndex) {
+    const seed = classNum * 1000 + studentNum * 17 + subjectIndex * 31;
+    const spread = (seed % 37) - 18;
+    const bases = [78, 74, 76, 72, 75, 73];
+    return Math.min(99, Math.max(42, Math.round((bases[subjectIndex] + spread + (classNum % 5)) * 100) / 100));
+}
+
+function generateDemoStudentData() {
+    const students = [];
+    let nameIdx = 0;
+    for (let c = 1; c <= 10; c++) {
+        for (let n = 1; n <= 25; n++) {
+            const row = {
+                '학번': buildStudentId(c, n),
+                '이름': DEMO_LAST_NAMES[nameIdx % DEMO_LAST_NAMES.length] + DEMO_FIRST_NAMES[nameIdx % DEMO_FIRST_NAMES.length],
+                '학년': 1,
+                '반': c,
+                '번호': n
+            };
+            DEMO_SUBJECTS.forEach((subject, si) => { row[subject] = demoScoreFor(c, n, si); });
+            students.push(row);
+            nameIdx++;
+        }
+    }
+    return students;
+}
+
+function applyLoadedStudentData(sourceLabel, isDemo) {
+    isDemoData = isDemo;
+    processAllGrades();
+    setUploadState(isDemo ? '예시 데이터 적용됨' : '데이터 분석 완료!', true, sourceLabel);
+    displayGeneralStats();
+    clearPrintContainer();
+}
+
+function loadDemoData() {
+    studentData = generateDemoStudentData();
+    isFileUploaded = true;
+    applyLoadedStudentData(`가상 예시 (${studentData.length}명 · 1~10반)`, true);
+}
 
 // 전역 캐시: 계산 부하를 줄이고 무결성을 보장하기 위해 업로드 직후 모든 등급과 석차를 미리 계산해 저장합니다.
 let processedGradesCache = {}; 
@@ -459,14 +537,8 @@ function uploadExcel(input) {
             
             if(parsedData.length > 0 && parsedData[0]['학번']) {
                 studentData = parsedData;
-                isFileUploaded = true; 
-                
-                // 엔진 구동 (모든 등급/통계 계산)
-                processAllGrades();
-                
-                setUploadState("데이터 분석 완료!", true, file.name);
-                displayGeneralStats(); 
-                clearPrintContainer(); // 새 데이터 업로드 시 기존 출력물 제거
+                isFileUploaded = true;
+                applyLoadedStudentData(file.name, false);
             } else {
                 isFileUploaded = false;
                 studentData = [];
@@ -492,8 +564,12 @@ function setUploadState(statusText, isSuccess, fileName = "") {
     const fileStatus = document.getElementById('fileStatus');
     if (isSuccess) {
         uploadBox.classList.add('success');
-        uploadTitle.textContent = "성적 데이터 분석 완료! (고교학점제 규정 적용)";
-        fileStatus.textContent = `▶ ${fileName} 등록 성공 (${studentData.length}명)`;
+        uploadTitle.textContent = isDemoData
+            ? "예시 데이터 적용 중 (고교학점제 규정 시연)"
+            : "성적 데이터 분석 완료! (고교학점제 규정 적용)";
+        fileStatus.textContent = isDemoData
+            ? `▶ ${fileName} · 엑셀 업로드 시 실제 데이터로 교체`
+            : `▶ ${fileName} 등록 성공 (${studentData.length}명)`;
     } else {
         uploadBox.classList.remove('success');
         uploadTitle.textContent = "엑셀 성적 파일 등록하기";
@@ -693,6 +769,8 @@ function searchStudentRange() {
 document.getElementById('studentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') searchSingleStudent(); });
 document.getElementById('startStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('endStudentId').focus(); });
 document.getElementById('endStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') searchStudentRange(); });
+
+document.addEventListener('DOMContentLoaded', loadDemoData);
 </script>
 
 </body>
