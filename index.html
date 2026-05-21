@@ -119,6 +119,45 @@
     .done { color: #0d9488; }
     .muted { color: #94a3b8; }
     .preview { max-width: 28rem; color: #475569; word-break: break-word; }
+    .profile-row td { border-bottom: none; padding-bottom: 4px; }
+    .profile-cats td {
+      padding: 0 0 12px 0;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: top;
+    }
+    .category-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    @media (min-width: 640px) {
+      .category-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .category-card {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+    .category-card .cat-label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #0d9488;
+      margin-bottom: 4px;
+    }
+    .category-card .cat-value {
+      font-size: 0.8125rem;
+      color: #334155;
+      word-break: break-word;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+    .common-themes .tags li span.type {
+      font-size: 0.7rem;
+      color: #64748b;
+      margin-left: 4px;
+    }
     .sheet-banner {
       margin-bottom: 16px;
       padding: 12px 16px;
@@ -259,15 +298,73 @@
       });
       tabs.push({ gid: m[1], title: title });
     }
+    if (tabs.length) return tabs;
+    var re3 = /"gid":(\d+),"name":"((?:\\.|[^"\\])*)"/g;
+    while ((m = re3.exec(html)) !== null) {
+      tabs.push({ gid: m[1], title: m[2] });
+    }
     return tabs;
   }
 
+  function sheetProbeSignature(values) {
+    if (!values || !values.length) return "";
+    var sample = values.slice(0, 3).map(function (row) {
+      return (row || []).map(function (c) { return String(c || "").trim(); }).join(" ");
+    }).join(" ");
+    var m = sample.match(/\[(\d+반)\]/);
+    return m ? m[1] : sample.slice(0, 80);
+  }
+
+  async function probeTabsByClassNames(spreadsheetId) {
+    var probed = [];
+    var seen = {};
+    for (var i = 1; i <= 20; i++) {
+      var title = i + "반";
+      try {
+        var values = await fetchSheetValuesGviz(spreadsheetId, { title: title });
+        if (!values || !values.length) break;
+        var sig = sheetProbeSignature(values);
+        if (!sig || seen[sig]) break;
+        seen[sig] = true;
+        if (sig.indexOf("반") < 0 && probed.length) break;
+        probed.push({ gid: null, title: title });
+      } catch (err) {
+        break;
+      }
+    }
+    return probed;
+  }
+
+  async function probeTabsBySheetIndex(spreadsheetId) {
+    var probed = [];
+    var seen = {};
+    for (var i = 1; i <= 20; i++) {
+      try {
+        var values = await fetchSheetValuesGviz(spreadsheetId, { title: "Sheet" + i });
+        if (!values || !values.length) break;
+        var sig = sheetProbeSignature(values);
+        if (!sig || seen[sig]) break;
+        seen[sig] = true;
+        probed.push({ gid: null, title: "Sheet" + i });
+      } catch (err) {
+        break;
+      }
+    }
+    return probed;
+  }
+
   async function fetchSpreadsheetTabs(spreadsheetId) {
-    var url = "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/edit?usp=sharing";
-    var res = await fetch(url);
-    if (res.ok) {
-      var tabs = parseTabsFromHtml(await res.text());
-      if (tabs.length) return tabs;
+    var urls = [
+      "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/edit?usp=sharing",
+      "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/edit",
+    ];
+    for (var u = 0; u < urls.length; u++) {
+      try {
+        var res = await fetch(urls[u]);
+        if (!res.ok) continue;
+        var tabs = parseTabsFromHtml(await res.text());
+        if (tabs.length) return tabs;
+      } catch (err) { /* CORS or network */ }
     }
     var feedUrl = "https://spreadsheets.google.com/feeds/worksheets/" + spreadsheetId + "/public/full?alt=json";
     try {
@@ -286,25 +383,10 @@
         }
       }
     } catch (e) { /* feed unavailable */ }
-    var probed = [];
-    for (var i = 0; i < 30; i++) {
-      try {
-        var params = new URLSearchParams({ tqx: "out:json" });
-        params.set("sheet", "sheet" + (i + 1));
-        var probeUrl = "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/gviz/tq?" + params;
-        var probeRes = await fetch(probeUrl);
-        if (!probeRes.ok) break;
-        var probeJson = parseGvizJson(await probeRes.text());
-        var cols = probeJson && probeJson.table && probeJson.table.cols;
-        if (!cols || !cols.length) break;
-        var label = String((cols[0] && cols[0].label) || "").trim();
-        if (label.indexOf("Error") === 0 || label.indexOf("#") === 0) break;
-        probed.push({ gid: null, title: "sheet" + (i + 1) });
-      } catch (err) {
-        break;
-      }
-    }
-    if (probed.length) return probed;
+    var classTabs = await probeTabsByClassNames(spreadsheetId);
+    if (classTabs.length) return classTabs;
+    var sheetTabs = await probeTabsBySheetIndex(spreadsheetId);
+    if (sheetTabs.length) return sheetTabs;
     throw new Error("시트 탭을 찾을 수 없습니다. URL·공개 공유 설정을 확인하세요.");
   }
 
@@ -347,6 +429,163 @@
     }));
   }
 
+  var PROFILE_HEADER_PATTERN = /^\[\d+반\]\s*\[\d+\]\s*\[[^\]]+\]\s*학생\s*프로필\s*/i;
+  var CATEGORY_DEFS = [
+    { key: "선생님께 한마디", patterns: [/선생님께/, /전하는\s*한마디/, /💗/] },
+    { key: "과목별 학습 설문", patterns: [/영역별/, /과목별/, /학습\s*설문/, /📚/, /과목\s*\d/] },
+    { key: "공부 시작 시기", patterns: [/공부\s*시작\s*시기/] },
+    { key: "공부 방법", patterns: [/공부\s*방법/] },
+    { key: "시험 전 자신감", patterns: [/시험\s*전\s*자신감/, /자신감\s*[:：]/] }
+  ];
+  var FIELD_LINES = [
+    { key: "공부 시작 시기", re: /^공부\s*시작\s*시기\s*[:：]\s*(.*)$/i },
+    { key: "공부 방법", re: /^공부\s*방법\s*[:：]\s*(.*)$/i },
+    { key: "시험 전 자신감", re: /^시험\s*전\s*자신감\s*[:：]\s*(.*)$/i }
+  ];
+  var CATEGORY_ORDER = ["선생님께 한마디", "과목별 학습 설문", "공부 시작 시기", "공부 방법", "시험 전 자신감", "기타"];
+  var PROFILE_KEYWORD_THEMES = [
+    { re: /국어|수학|영어|과학|사회|음악|체육|미술|역사|도덕|기술|정보/gi, label: "과목 언급" },
+    { re: /자신감|불안|긴장|걱정/gi, label: "시험·정서" },
+    { re: /친구|또래|관계/gi, label: "대인관계" },
+    { re: /집중|복습|예습|필기/gi, label: "학습 습관" },
+    { re: /선생님|감사|고맙/gi, label: "선생님·감사" }
+  ];
+
+  function escapeRegex(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function detectCategory(line) {
+    for (var i = 0; i < CATEGORY_DEFS.length; i++) {
+      var def = CATEGORY_DEFS[i];
+      for (var j = 0; j < def.patterns.length; j++) {
+        if (def.patterns[j].test(line)) return def.key;
+      }
+    }
+    return null;
+  }
+
+  function appendChunk(target, key, chunk) {
+    var v = String(chunk || "").trim();
+    if (!v) return;
+    target[key] = target[key] ? target[key] + "\n" + v : v;
+  }
+
+  function stripProfileHeader(text, meta) {
+    var s = String(text || "").trim();
+    if (meta && meta.반 != null && meta.번호 != null && meta.이름) {
+      var classNum = String(meta.반).replace(/반$/, "");
+      var specific = new RegExp(
+        "^\\[" + escapeRegex(classNum) + "반\\]\\s*\\[" + meta.번호 + "\\]\\s*\\[" + escapeRegex(meta.이름) + "\\]\\s*학생\\s*프로필\\s*",
+        "i"
+      );
+      s = s.replace(specific, "");
+    }
+    return s.replace(PROFILE_HEADER_PATTERN, "").trim();
+  }
+
+  function parseProfileCategories(text, meta) {
+    var body = stripProfileHeader(text, meta);
+    if (!body) return {};
+    var result = {};
+    var current = null;
+    var buffer = [];
+    function flush() {
+      if (current && buffer.length) {
+        appendChunk(result, current, buffer.join("\n"));
+        buffer = [];
+      }
+    }
+    var lines = body.split(/\r?\n/);
+    for (var li = 0; li < lines.length; li++) {
+      var line = lines[li].trim();
+      if (!line) continue;
+      var fieldHandled = false;
+      for (var fi = 0; fi < FIELD_LINES.length; fi++) {
+        var fm = line.match(FIELD_LINES[fi].re);
+        if (fm) {
+          flush();
+          current = null;
+          appendChunk(result, FIELD_LINES[fi].key, fm[1] || "");
+          fieldHandled = true;
+          break;
+        }
+      }
+      if (fieldHandled) continue;
+      var cat = detectCategory(line);
+      if (cat) {
+        flush();
+        current = cat;
+        var quoted = line.match(/[""]([^""]+)[""]/);
+        if (quoted) {
+          buffer.push(quoted[1]);
+          continue;
+        }
+        var stripped = line
+          .replace(/^[\s💗📚📝✏️🎯⭐🔖•\-]+\s*/, "")
+          .replace(/^(선생님께\s*전하는\s*한마디|영역별[^:：]*|과목별[^:：]*|학습\s*설문[^:：]*)\s*[:：]?\s*/i, "")
+          .trim();
+        var looksHeaderOnly = stripped.length < 4 || /^(선생님께|전하는|영역별|과목별|학습\s*설문|과목\s*\d)/i.test(stripped);
+        if (!looksHeaderOnly && stripped) buffer.push(stripped);
+      } else if (current) {
+        buffer.push(line);
+      } else {
+        appendChunk(result, "기타", line);
+      }
+    }
+    flush();
+    if (!Object.keys(result).length) result["기타"] = body;
+    return result;
+  }
+
+  function categoriesToList(categories) {
+    var ordered = [];
+    var seen = {};
+    for (var i = 0; i < CATEGORY_ORDER.length; i++) {
+      var key = CATEGORY_ORDER[i];
+      if (categories[key] && String(categories[key]).trim()) {
+        ordered.push({ label: key, value: String(categories[key]).trim() });
+        seen[key] = true;
+      }
+    }
+    for (var k in categories) {
+      if (!seen[k] && categories[k] && String(categories[k]).trim()) {
+        ordered.push({ label: k, value: String(categories[k]).trim() });
+      }
+    }
+    return ordered;
+  }
+
+  function extractCommonThemes(rows) {
+    var categoryFill = {};
+    var keywordHits = {};
+    for (var ri = 0; ri < rows.length; ri++) {
+      var row = rows[ri];
+      var cats = row.categories || parseProfileCategories((row._raw && row._raw.프로필) || "", null);
+      for (var ck in cats) {
+        if (!cats[ck] || !String(cats[ck]).trim() || ck === "기타") continue;
+        categoryFill[ck] = (categoryFill[ck] || 0) + 1;
+      }
+      var corpus = Object.keys(cats).map(function (k) { return cats[k]; }).join(" ");
+      for (var ti = 0; ti < PROFILE_KEYWORD_THEMES.length; ti++) {
+        var theme = PROFILE_KEYWORD_THEMES[ti];
+        var matches = corpus.match(theme.re);
+        if (matches && matches.length) {
+          keywordHits[theme.label] = (keywordHits[theme.label] || 0) + matches.length;
+        }
+      }
+    }
+    var themes = [];
+    for (var ckey in categoryFill) {
+      themes.push({ 주제: ckey, 언급수: categoryFill[ckey], 유형: "category" });
+    }
+    for (var kkey in keywordHits) {
+      themes.push({ 주제: kkey, 언급수: keywordHits[kkey], 유형: "keyword" });
+    }
+    themes.sort(function (a, b) { return b.언급수 - a.언급수; });
+    return themes.slice(0, 10);
+  }
+
   function extractProfileMeta(text) {
     const match = String(text || "").match(PROFILE_PATTERN);
     if (!match) return null;
@@ -374,14 +613,16 @@
       var text = raw.map(function (c) { return String(c || "").trim(); }).join("\n").trim();
       var meta = extractProfileMeta(text);
       if (!meta) return null;
-      var preview = text.length > 160 ? text.slice(0, 160).trim() + "…" : text;
+      var categories = parseProfileCategories(text, meta);
+      var categoryList = categoriesToList(categories);
       return {
         id: rowIndex + 1,
         반: meta.반,
         번호: meta.번호,
         이름: meta.이름,
-        미리보기: preview,
-        _raw: { 이름: meta.이름, 프로필: text, 미리보기: preview },
+        categories: categories,
+        categoryList: categoryList,
+        _raw: { 이름: meta.이름, 프로필: text, 본문: stripProfileHeader(text, meta) },
         완료: true,
       };
     }).filter(Boolean);
@@ -391,7 +632,7 @@
       return (a.번호 || 0) - (b.번호 || 0);
     });
     return {
-      headers: ["반", "번호", "이름", "미리보기"],
+      headers: ["반", "번호", "이름"],
       rows: rows,
       meta: { classColumn: "반", numberColumn: "번호", completionColumn: "(프로필 제출)", format: "profile" },
     };
@@ -526,6 +767,7 @@
       byClass: byClass,
       columnInsights: buildColumnInsights(headers, rows),
       themes: detectThemes(rows),
+      commonThemes: meta.format === "profile" ? extractCommonThemes(rows) : [],
       headers: headers,
       rows: rows,
       meta: Object.assign({}, meta, { totalRows: total, classCount: Object.keys(grouped).length }),
@@ -628,7 +870,7 @@
   function renderSheetTabs() {
     if (!lastMultiResult) return "";
     var n = lastMultiResult.sheetsMeta.total;
-    var html = '<div class="sheet-banner"><strong>시트 ' + esc(n) + "개 인식됨</strong></div>";
+    var html = '<div class="sheet-banner">선택한 시트: <strong>' + esc(activeSheetView || "") + "</strong></div>";
     html += '<p class="hint" style="margin:0 0 10px;font-size:0.75rem;color:#64748b;">시트 탭 (' + esc(n) + "개)</p>";
     html += '<div class="sheet-tabs" role="tablist">';
     lastMultiResult.sheets.forEach(function (sheet) {
@@ -636,6 +878,19 @@
       html += '<button type="button" class="sheet-tab' + active + '" data-sheet="' + esc(sheet.sheetName) + '" role="tab">';
       html += esc(sheet.sheetName);
       html += '<span class="count">' + esc(sheet.summary.총응답) + "건</span></button>";
+    });
+    html += "</div>";
+    return html;
+  }
+
+  function renderCategoryCards(row) {
+    var list = row.categoryList || categoriesToList(row.categories || {});
+    if (!list.length) return '<span class="muted">분류할 내용 없음</span>';
+    var html = '<div class="category-grid">';
+    list.forEach(function (item) {
+      var val = item.value.length > 220 ? item.value.slice(0, 220).trim() + "…" : item.value;
+      html += '<div class="category-card"><span class="cat-label">' + esc(item.label) + '</span>';
+      html += '<span class="cat-value">' + esc(val) + "</span></div>";
     });
     html += "</div>";
     return html;
@@ -678,7 +933,16 @@
     });
     html += "</div>";
 
-    if (data.themes && data.themes.length) {
+    if (data.commonThemes && data.commonThemes.length) {
+      html += '<section class="block common-themes"><h2>공통 주제</h2><p class="hint">현재 시트 학생 프로필에서 자주 나타난 분류·키워드입니다.</p><ul class="tags">';
+      data.commonThemes.forEach(function (t) {
+        var typeLabel = t.유형 === "category" ? "분류" : "키워드";
+        html += "<li>" + esc(t.주제) + ' <span>(' + esc(t.언급수) + ')</span><span class="type">· ' + esc(typeLabel) + "</span></li>";
+      });
+      html += "</ul></section>";
+    }
+
+    if (data.themes && data.themes.length && !(data.meta && data.meta.format === "profile")) {
       html += '<section class="block"><h2>주요 상담 주제</h2><p class="hint">응답 텍스트에서 자주 언급된 키워드입니다.</p><ul class="tags">';
       data.themes.forEach(function (t) {
         html += "<li>" + esc(t.주제) + " <span>(" + esc(t.언급수) + ")</span></li>";
@@ -705,16 +969,29 @@
     }
 
     if (data.rows && data.rows.length) {
-      var fmt = data.meta && data.meta.format === "profile" ? "학생 프로필" : "표";
+      var isProfile = data.meta && data.meta.format === "profile";
+      var fmt = isProfile ? "학생 프로필 (분류별)" : "표";
       html += '<section class="block"><h2>응답 목록</h2><p class="hint">형식: ' + esc(fmt) + ' · 최대 50건</p>';
-      html += "<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th><th>미리보기</th></tr></thead><tbody>";
-      data.rows.slice(0, 50).forEach(function (row) {
-        html += "<tr><td>" + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
-        html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
-        html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td>";
-        html += '<td class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</td></tr>";
-      });
-      html += "</tbody></table></section>";
+      if (isProfile) {
+        html += "<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th></tr></thead><tbody>";
+        data.rows.slice(0, 50).forEach(function (row) {
+          html += '<tr class="profile-row"><td>' + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
+          html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
+          html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td></tr>";
+          html += '<tr class="profile-cats"><td colspan="4">' + renderCategoryCards(row) + "</td></tr>";
+        });
+        html += "</tbody></table>";
+      } else {
+        html += "<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th><th>미리보기</th></tr></thead><tbody>";
+        data.rows.slice(0, 50).forEach(function (row) {
+          html += "<tr><td>" + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
+          html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
+          html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td>";
+          html += '<td class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</td></tr>";
+        });
+        html += "</tbody></table>";
+      }
+      html += "</section>";
     }
 
     el.innerHTML = html;
@@ -730,8 +1007,8 @@
     var metaEl = document.getElementById("meta");
     metaEl.hidden = false;
     metaEl.innerHTML =
+      (multi ? '시트 탭 <strong>' + esc(multi.sheetsMeta.total) + "개</strong> 인식됨 · " + esc(multi.sheetsMeta.names.join(", ")) + " · " : "") +
       '데이터 출처: <strong>공개 시트</strong>' +
-      (multi ? ' · 시트: <strong>' + esc(activeSheetView || "") + "</strong>" : "") +
       (data.meta && data.meta.classColumn ? ' · 반: <strong>' + esc(data.meta.classColumn) + "</strong>" : "") +
       (data.meta && data.meta.numberColumn ? ' · 번호: <strong>' + esc(data.meta.numberColumn) + "</strong>" : "") +
       ' · ID: <code>' + esc(spreadsheetId) + "</code>";
