@@ -272,6 +272,38 @@
       font-weight: 400;
       opacity: 0.85;
     }
+    .participation-banner {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      font-size: 0.8125rem;
+      color: #78350f;
+      line-height: 1.5;
+    }
+    .participation-banner strong { color: #92400e; }
+    .participation-banner .missing-list {
+      margin: 6px 0 0;
+      font-weight: 600;
+      color: #b45309;
+      word-break: break-word;
+    }
+    .student-card--absent {
+      background: #fafafa;
+      border-style: dashed;
+      border-color: #cbd5e1;
+      opacity: 0.92;
+    }
+    .student-card--absent .student-name {
+      color: #64748b;
+      font-weight: 600;
+    }
+    .student-card--absent .absent-note {
+      margin: 0;
+      font-size: 0.8125rem;
+      color: #94a3b8;
+    }
     @media print {
       .wrap { max-width: 100%; }
       .student-cards-list {
@@ -979,11 +1011,58 @@
     });
   }
 
+  function computeParticipationMeta(sheetAnalyses) {
+    if (!sheetAnalyses || !sheetAnalyses.length) {
+      return { maxExpected: 0, referenceSheetName: "" };
+    }
+    var ref = { name: sheetAnalyses[0].sheetName, count: sheetAnalyses[0].summary.총응답 || 0 };
+    for (var i = 1; i < sheetAnalyses.length; i++) {
+      var c = sheetAnalyses[i].summary.총응답 || 0;
+      if (c > ref.count) ref = { name: sheetAnalyses[i].sheetName, count: c };
+    }
+    return { maxExpected: ref.count, referenceSheetName: ref.name };
+  }
+
+  function computeSheetParticipation(rows, maxExpected, referenceSheetName) {
+    if (!maxExpected) {
+      return {
+        referenceSheetName: referenceSheetName || "",
+        maxExpected: 0,
+        participated: 0,
+        missingNumbers: [],
+        missingCount: 0,
+      };
+    }
+    var present = {};
+    (rows || []).forEach(function (r) {
+      if (r.번호 != null && r.번호 > 0) present[r.번호] = true;
+    });
+    var missing = [];
+    for (var n = 1; n <= maxExpected; n++) {
+      if (!present[n]) missing.push(n);
+    }
+    return {
+      referenceSheetName: referenceSheetName,
+      maxExpected: maxExpected,
+      participated: maxExpected - missing.length,
+      missingNumbers: missing,
+      missingCount: missing.length,
+    };
+  }
+
   function analyzeAllSheets(sheetInputs) {
     var sheetAnalyses = (sheetInputs || []).map(function (item) {
       var analysis = analyzeSheetData(item.values);
       analysis.meta = Object.assign({}, analysis.meta, { sheetName: item.sheetName });
       return Object.assign({ sheetName: item.sheetName }, analysis);
+    });
+    var partMeta = computeParticipationMeta(sheetAnalyses);
+    sheetAnalyses.forEach(function (sheet) {
+      sheet.participation = computeSheetParticipation(
+        sheet.rows,
+        partMeta.maxExpected,
+        partMeta.referenceSheetName
+      );
     });
     var allRows = [];
     sheetAnalyses.forEach(function (sheet) {
@@ -999,6 +1078,7 @@
     return {
       sheets: sheetAnalyses,
       combined: combined,
+      participationMeta: partMeta,
       sheetsMeta: {
         total: sheetInputs.length,
         recognized: sheetAnalyses.filter(function (s) { return s.summary.총응답 > 0; }).length,
@@ -1101,18 +1181,84 @@
     return html;
   }
 
+  function renderParticipationBanner(data) {
+    var p = data.participation;
+    if (!p || !p.maxExpected) return "";
+    var html = '<div class="participation-banner">';
+    html +=
+      "<p>전체 반 중 최대 인원 <strong>" +
+      esc(p.maxExpected) +
+      "명</strong> (기준 반: <strong>" +
+      esc(p.referenceSheetName) +
+      "</strong>) · 이 반 참여 <strong>" +
+      esc(p.participated) +
+      "</strong>명 / " +
+      esc(p.maxExpected) +
+      "명</p>";
+    if (p.missingCount > 0) {
+      html +=
+        '<p class="missing-list">미참여 ' +
+        esc(p.missingCount) +
+        "명 (번호): " +
+        esc(
+          p.missingNumbers
+            .map(function (n) {
+              return n + "번";
+            })
+            .join(", ")
+        ) +
+        "</p>";
+    } else {
+      html += '<p class="missing-list">미참여 없음 (전원 참여)</p>';
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function renderAbsentStudentCard(sheetName, num) {
+    var html = '<article class="student-card student-card--absent">';
+    html += '<header class="student-response-header"><div class="header-meta">';
+    if (sheetName) html += '<span class="student-class">' + esc(sheetName) + "</span>";
+    html += '<span class="student-num">' + esc(num) + "번</span>";
+    html += '<span class="student-name">(미확인)</span>';
+    html += "</div>";
+    html += '<span class="status-badge pending">미참여</span></header>';
+    html += '<div class="student-response-body"><p class="absent-note">설문에 참여하지 않았습니다.</p></div>';
+    html += '<hr class="student-card-divider" aria-hidden="true" />';
+    html += "</article>";
+    return html;
+  }
+
   function renderStudentCards(data) {
-    if (!data.rows || !data.rows.length) return "";
     var isProfile = data.meta && data.meta.format === "profile";
-    var hasCategories = isProfile || data.rows.some(rowHasSections);
-    var list = data.rows.slice(0, 50);
+    var hasCategories = isProfile || (data.rows && data.rows.some(rowHasSections));
+    var list = (data.rows || []).slice(0, 50);
+    var sheetLabel = (data.meta && data.meta.sheetName) || activeSheetView || "";
     var html = '<h2 class="responses-heading">학생 응답</h2>';
-    html += '<p class="responses-hint">' + esc(list.length) + "명 · 최대 50건 표시</p>";
+    html += renderParticipationBanner(data);
+    var absentCount =
+      data.participation && data.participation.missingCount
+        ? data.participation.missingCount
+        : 0;
+    html +=
+      '<p class="responses-hint">참여 ' +
+      esc(list.length) +
+      "명" +
+      (absentCount ? " · 미참여 " + esc(absentCount) + "명" : "") +
+      " · 최대 50건 표시</p>";
     html += '<div class="student-cards student-cards-list">';
     list.forEach(function (row) {
       html += renderStudentCard(row, hasCategories);
     });
+    if (data.participation && data.participation.missingNumbers.length) {
+      data.participation.missingNumbers.forEach(function (num) {
+        html += renderAbsentStudentCard(sheetLabel, num);
+      });
+    }
     html += "</div>";
+    if (!list.length && !(data.participation && data.participation.missingNumbers.length)) {
+      return "";
+    }
     return html;
   }
 
@@ -1124,7 +1270,7 @@
     if (multi) {
       html += renderSheetTabs();
     }
-    if (!s.총응답) {
+    if (!s.총응답 && !(data.participation && data.participation.missingCount)) {
       html += '<p class="student-cards-empty">이 탭에 분석할 데이터가 없습니다.</p>';
       el.innerHTML = html;
       el.classList.add("visible");
