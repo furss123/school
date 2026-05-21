@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>상담 분석</title>
-  <!-- ui-version: 20260522-student-cards-grid -->
+  <!-- ui-version: 20260522-list-roster-participation -->
   <style>
     * { box-sizing: border-box; }
     body {
@@ -1114,58 +1114,174 @@
     });
   }
 
+  function normalizeTabTitle(title) {
+    return String(title || "").trim().toLowerCase().replace(/\s+/g, "");
+  }
+
+  function isListSheetTab(title) {
+    var n = normalizeTabTitle(title);
+    return n === "list" || n === "명단" || n === "학생명단" || n === "studentlist";
+  }
+
+  function normalizeSheetClassKey(value) {
+    var t = String(value || "").trim();
+    if (!t) return "";
+    var m = t.match(/(\d+)\s*반/);
+    if (m) return m[1] + "반";
+    return t.toLowerCase().replace(/\s+/g, "");
+  }
+
+  function parseListRoster(rawValues) {
+    if (!rawValues || !rawValues.length) return [];
+    var headerRow = rawValues[0].map(coerceText);
+    var dataRows = rawValues.slice(1).filter(function (row) {
+      return row && row.some(function (cell) { return coerceText(cell) !== ""; });
+    });
+    var classIdx = findColumnIndex(headerRow, CLASS_ALIASES);
+    var numberIdx = findColumnIndex(headerRow, NUMBER_ALIASES);
+    var nameIdx = findColumnIndex(headerRow, NAME_ALIASES);
+    if (numberIdx < 0 && headerRow.length > 0) numberIdx = 0;
+    if (nameIdx < 0 && headerRow.length > 1) nameIdx = 1;
+
+    var roster = [];
+    dataRows.forEach(function (raw, rowIndex) {
+      var classVal = classIdx >= 0 ? coerceText(raw[classIdx]) : "";
+      var numberVal = coerceNumber(raw[numberIdx]);
+      var nameVal = nameIdx >= 0 ? coerceText(raw[nameIdx]) : "";
+      if (numberVal == null && !nameVal) return;
+      if (numberVal == null) numberVal = rowIndex + 1;
+      roster.push({ 반: classVal, 번호: numberVal, 이름: nameVal });
+    });
+    roster.sort(function (a, b) {
+      return (a.번호 || 0) - (b.번호 || 0);
+    });
+    return roster;
+  }
+
+  function rosterForSheet(roster, sheetName) {
+    if (!roster || !roster.length) return [];
+    var hasClass = roster.some(function (r) { return r.반; });
+    if (!hasClass) return roster.slice();
+    var sheetKey = normalizeSheetClassKey(sheetName);
+    if (!sheetKey) return roster.slice();
+    var filtered = roster.filter(function (r) {
+      var classKey = normalizeSheetClassKey(r.반);
+      return classKey === sheetKey || classKey.indexOf(sheetKey) >= 0 || sheetKey.indexOf(classKey) >= 0;
+    });
+    return filtered.length ? filtered : roster.slice();
+  }
+
   function computeParticipationMeta(sheetAnalyses) {
     if (!sheetAnalyses || !sheetAnalyses.length) {
-      return { maxExpected: 0, referenceSheetName: "" };
+      return { maxExpected: 0, referenceSheetName: "", rosterSource: "responses" };
     }
     var ref = { name: sheetAnalyses[0].sheetName, count: sheetAnalyses[0].summary.총응답 || 0 };
     for (var i = 1; i < sheetAnalyses.length; i++) {
       var c = sheetAnalyses[i].summary.총응답 || 0;
       if (c > ref.count) ref = { name: sheetAnalyses[i].sheetName, count: c };
     }
-    return { maxExpected: ref.count, referenceSheetName: ref.name };
+    return {
+      maxExpected: ref.count,
+      referenceSheetName: ref.name,
+      rosterSource: "responses",
+      roster: [],
+    };
   }
 
-  function computeSheetParticipation(rows, maxExpected, referenceSheetName) {
+  function computeSheetParticipation(rows, rosterOrMax, referenceSheetName, rosterSource) {
+    if (Array.isArray(rosterOrMax) && rosterOrMax.length) {
+      var present = {};
+      (rows || []).forEach(function (r) {
+        if (r.번호 != null && r.번호 > 0) present[r.번호] = true;
+      });
+      var missingStudents = rosterOrMax.filter(function (entry) {
+        return entry.번호 != null && !present[entry.번호];
+      });
+      return {
+        referenceSheetName: referenceSheetName || "list",
+        rosterSource: rosterSource || "list",
+        maxExpected: rosterOrMax.length,
+        participated: rosterOrMax.length - missingStudents.length,
+        missingNumbers: missingStudents.map(function (s) { return s.번호; }),
+        missingStudents: missingStudents,
+        missingCount: missingStudents.length,
+      };
+    }
+
+    var maxExpected = typeof rosterOrMax === "number" ? rosterOrMax : 0;
     if (!maxExpected) {
       return {
         referenceSheetName: referenceSheetName || "",
+        rosterSource: rosterSource || "responses",
         maxExpected: 0,
         participated: 0,
         missingNumbers: [],
+        missingStudents: [],
         missingCount: 0,
       };
     }
-    var present = {};
+    var presentNums = {};
     (rows || []).forEach(function (r) {
-      if (r.번호 != null && r.번호 > 0) present[r.번호] = true;
+      if (r.번호 != null && r.번호 > 0) presentNums[r.번호] = true;
     });
     var missing = [];
     for (var n = 1; n <= maxExpected; n++) {
-      if (!present[n]) missing.push(n);
+      if (!presentNums[n]) missing.push(n);
     }
     return {
       referenceSheetName: referenceSheetName,
+      rosterSource: rosterSource || "responses",
       maxExpected: maxExpected,
       participated: maxExpected - missing.length,
       missingNumbers: missing,
+      missingStudents: missing.map(function (num) { return { 번호: num, 이름: "" }; }),
       missingCount: missing.length,
     };
   }
 
   function analyzeAllSheets(sheetInputs) {
-    var sheetAnalyses = (sheetInputs || []).map(function (item) {
+    var listInput = null;
+    var responseInputs = [];
+    (sheetInputs || []).forEach(function (item) {
+      if (isListSheetTab(item.sheetName)) listInput = item;
+      else responseInputs.push(item);
+    });
+    var fullRoster = listInput ? parseListRoster(listInput.values) : [];
+
+    var sheetAnalyses = responseInputs.map(function (item) {
       var analysis = analyzeSheetData(item.values);
       analysis.meta = Object.assign({}, analysis.meta, { sheetName: item.sheetName });
       return Object.assign({ sheetName: item.sheetName }, analysis);
     });
-    var partMeta = computeParticipationMeta(sheetAnalyses);
+
+    var partMeta = fullRoster.length
+      ? {
+          maxExpected: fullRoster.length,
+          referenceSheetName: listInput.sheetName,
+          rosterSource: "list",
+          roster: fullRoster,
+          listTabName: listInput.sheetName,
+        }
+      : computeParticipationMeta(sheetAnalyses);
+
     sheetAnalyses.forEach(function (sheet) {
-      sheet.participation = computeSheetParticipation(
-        sheet.rows,
-        partMeta.maxExpected,
-        partMeta.referenceSheetName
-      );
+      if (fullRoster.length) {
+        var sheetRoster = rosterForSheet(fullRoster, sheet.sheetName);
+        var rosterSlice = sheetRoster.length ? sheetRoster : fullRoster;
+        sheet.participation = computeSheetParticipation(
+          sheet.rows,
+          rosterSlice,
+          partMeta.referenceSheetName,
+          "list"
+        );
+      } else {
+        sheet.participation = computeSheetParticipation(
+          sheet.rows,
+          partMeta.maxExpected,
+          partMeta.referenceSheetName,
+          partMeta.rosterSource
+        );
+      }
     });
     var allRows = [];
     sheetAnalyses.forEach(function (sheet) {
@@ -1183,7 +1299,10 @@
       combined: combined,
       participationMeta: partMeta,
       sheetsMeta: {
-        total: sheetInputs.length,
+        total: sheetAnalyses.length,
+        listTab: listInput
+          ? { name: listInput.sheetName, rosterCount: fullRoster.length }
+          : null,
         recognized: sheetAnalyses.filter(function (s) { return s.summary.총응답 > 0; }).length,
         names: sheetAnalyses.map(function (s) { return s.sheetName; }),
         perSheet: sheetAnalyses.map(function (s) {
@@ -1284,32 +1403,51 @@
     return html;
   }
 
+  function formatMissingStudentLabel(student) {
+    if (!student) return "";
+    var num = student.번호 != null ? student.번호 + "번" : "";
+    var name = student.이름 ? String(student.이름) : "";
+    if (num && name) return num + " " + name;
+    return num || name || "";
+  }
+
   function renderParticipationBanner(data) {
     var p = data.participation;
     if (!p || !p.maxExpected) return "";
     var html = '<div class="participation-banner">';
-    html +=
-      "<p>전체 반 중 최대 인원 <strong>" +
-      esc(p.maxExpected) +
-      "명</strong> (기준 반: <strong>" +
-      esc(p.referenceSheetName) +
-      "</strong>) · 이 반 참여 <strong>" +
-      esc(p.participated) +
-      "</strong>명 / " +
-      esc(p.maxExpected) +
-      "명</p>";
+    if (p.rosterSource === "list") {
+      html +=
+        "<p>명단 기준 <strong>" +
+        esc(p.maxExpected) +
+        "명</strong> (시트 탭: <strong>" +
+        esc(p.referenceSheetName) +
+        "</strong>) · 이 탭 참여 <strong>" +
+        esc(p.participated) +
+        "</strong>명 / " +
+        esc(p.maxExpected) +
+        "명</p>";
+    } else {
+      html +=
+        "<p>전체 반 중 최대 인원 <strong>" +
+        esc(p.maxExpected) +
+        "명</strong> (기준 반: <strong>" +
+        esc(p.referenceSheetName) +
+        "</strong>) · 이 반 참여 <strong>" +
+        esc(p.participated) +
+        "</strong>명 / " +
+        esc(p.maxExpected) +
+        "명</p>";
+    }
     if (p.missingCount > 0) {
+      var labels = (p.missingStudents || []).map(formatMissingStudentLabel).filter(Boolean);
+      if (!labels.length && p.missingNumbers) {
+        labels = p.missingNumbers.map(function (n) { return n + "번"; });
+      }
       html +=
         '<p class="missing-list">미참여 ' +
         esc(p.missingCount) +
-        "명 (번호): " +
-        esc(
-          p.missingNumbers
-            .map(function (n) {
-              return n + "번";
-            })
-            .join(", ")
-        ) +
+        "명: " +
+        esc(labels.join(", ")) +
         "</p>";
     } else {
       html += '<p class="missing-list">미참여 없음 (전원 참여)</p>';
@@ -1318,12 +1456,15 @@
     return html;
   }
 
-  function renderAbsentStudentCard(sheetName, num) {
+  function renderAbsentStudentCard(sheetName, student) {
+    var num = typeof student === "object" ? student.번호 : student;
+    var name =
+      typeof student === "object" && student.이름 ? String(student.이름) : "(미확인)";
     var html = '<article class="student-card student-card--absent">';
     html += '<header class="student-response-header"><div class="header-meta">';
     if (sheetName) html += '<span class="student-class">' + esc(sheetName) + "</span>";
-    html += '<span class="student-num">' + esc(num) + "번</span>";
-    html += '<span class="student-name">(미확인)</span>';
+    if (num != null) html += '<span class="student-num">' + esc(num) + "번</span>";
+    html += '<span class="student-name">' + esc(name) + "</span>";
     html += "</div>";
     html += '<span class="status-badge pending">미참여</span></header>';
     html += '<div class="student-response-body"><p class="absent-note">설문에 참여하지 않았습니다.</p></div>';
@@ -1353,9 +1494,15 @@
     list.forEach(function (row) {
       html += renderStudentCard(row, hasCategories);
     });
-    if (data.participation && data.participation.missingNumbers.length) {
-      data.participation.missingNumbers.forEach(function (num) {
-        html += renderAbsentStudentCard(sheetLabel, num);
+    if (data.participation && data.participation.missingCount > 0) {
+      var missingList =
+        data.participation.missingStudents && data.participation.missingStudents.length
+          ? data.participation.missingStudents
+          : data.participation.missingNumbers.map(function (num) {
+              return { 번호: num, 이름: "" };
+            });
+      missingList.forEach(function (student) {
+        html += renderAbsentStudentCard(sheetLabel, student);
       });
     }
     html += "</div>";
@@ -1400,8 +1547,23 @@
 
     var metaEl = document.getElementById("meta");
     metaEl.hidden = false;
+    var listMeta =
+      multi && multi.sheetsMeta.listTab
+        ? ' · 명단 탭 <strong>' +
+          esc(multi.sheetsMeta.listTab.name) +
+          "</strong> (" +
+          esc(multi.sheetsMeta.listTab.rosterCount) +
+          "명)"
+        : "";
     metaEl.innerHTML =
-      (multi ? '시트 탭 <strong>' + esc(multi.sheetsMeta.total) + "개</strong> 인식됨 · " + esc(multi.sheetsMeta.names.join(", ")) + " · " : "") +
+      (multi
+        ? '응답 시트 <strong>' +
+          esc(multi.sheetsMeta.total) +
+          "개</strong> · " +
+          esc(multi.sheetsMeta.names.join(", ")) +
+          listMeta +
+          " · "
+        : "") +
       '데이터 출처: <strong>공개 시트</strong>' +
       (data.meta && data.meta.classColumn ? ' · 반: <strong>' + esc(data.meta.classColumn) + "</strong>" : "") +
       (data.meta && data.meta.numberColumn ? ' · 번호: <strong>' + esc(data.meta.numberColumn) + "</strong>" : "") +
