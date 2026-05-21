@@ -372,9 +372,9 @@
     }
     .view-tracker {
       position: fixed;
-      left: max(5mm, calc(50% - 105mm + 5mm));
+      left: max(8px, calc(50% - 105mm - 12mm));
       top: 50%;
-      transform: translateY(-50%);
+      transform: translate(-100%, -50%);
       z-index: 999;
       width: 148px;
       padding: 14px 12px;
@@ -446,7 +446,7 @@
     .view-tracker-status[hidden] { display: none !important; }
     .fab-stack {
       position: fixed;
-      right: max(5mm, calc(50% - 105mm + 5mm));
+      right: max(8px, calc(50% - 105mm - 12mm));
       top: 50%;
       bottom: auto;
       transform: translateY(-50%);
@@ -497,8 +497,15 @@
       color: #fff;
     }
     .fab-print svg { stroke: #fff; }
+    @media (max-width: 960px) {
+      .view-tracker {
+        left: 8px;
+        transform: translate(0, -50%);
+      }
+    }
     @media (max-width: 640px) {
       .fab-stack {
+        right: 8px;
         gap: 7px;
       }
       .fab {
