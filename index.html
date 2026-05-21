@@ -379,7 +379,7 @@
       border-radius: 12px;
       background: #fff;
       box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
-      max-height: calc(100vh - 120px);
+      max-height: min(70vh, 320px);
       overflow-y: auto;
     }
     .view-tracker[hidden] { display: none !important; }
@@ -471,8 +471,8 @@
       transition: transform 0.15s, box-shadow 0.15s;
     }
     .fab:hover {
-      transform: translateY(-1px);
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+      filter: brightness(1.03);
     }
     .fab svg {
       width: 22px;
@@ -492,9 +492,25 @@
       color: #fff;
     }
     .fab-print svg { stroke: #fff; }
-    @media (max-width: 1179px) {
+    @media (min-width: 1240px) {
+      .view-tracker:not([hidden]) {
+        left: max(12px, calc(50vw - 105mm - 16mm - 148px));
+        top: 50%;
+        right: auto;
+        transform: translateY(-50%);
+      }
+      .fab-stack {
+        left: calc(50vw + 105mm + 16mm);
+        right: auto;
+        top: 50%;
+        bottom: auto;
+        transform: translateY(-50%);
+      }
+    }
+    @media (max-width: 1239px) {
       .view-tracker { display: none !important; }
       .fab-stack {
+        left: auto !important;
         right: 12px !important;
         bottom: 12px !important;
         top: auto !important;
@@ -1758,7 +1774,6 @@
     if (statusEl) {
       statusEl.hidden = !card.classList.contains("student-card--absent");
     }
-    scheduleLayoutSidePanels();
   }
 
   function teardownScrollStudentTracker() {
@@ -1768,65 +1783,7 @@
     }
     scrollStudentRatioMap = null;
     updateViewTracker(null);
-    scheduleLayoutSidePanels();
   }
-
-  var sidePanelLayoutTimer = null;
-
-  function layoutSidePanels() {
-    var results = document.getElementById("results");
-    var tracker = document.getElementById("viewTracker");
-    var fab = document.querySelector(".fab-stack");
-    if (!results || !fab) return;
-
-    if (!results.classList.contains("visible")) {
-      document.body.classList.remove("report-visible");
-      return;
-    }
-    document.body.classList.add("report-visible");
-
-    var rect = results.getBoundingClientRect();
-    var gap = 14;
-    var headerSafe = 88;
-    var trackerW = 148;
-
-    if (window.innerWidth < 1180) {
-      fab.style.top = "";
-      fab.style.right = "";
-      fab.style.bottom = "";
-      return;
-    }
-
-    if (tracker && !tracker.hidden) {
-      var trackerLeft = Math.max(8, rect.left - trackerW - gap);
-      var trackerTop = Math.max(headerSafe, rect.top + 8);
-      var trackerMaxTop = rect.bottom - tracker.offsetHeight - 8;
-      if (trackerMaxTop < headerSafe) trackerMaxTop = headerSafe;
-      if (trackerTop > trackerMaxTop) trackerTop = Math.max(headerSafe, trackerMaxTop);
-      tracker.style.left = trackerLeft + "px";
-      tracker.style.top = trackerTop + "px";
-      tracker.style.transform = "none";
-      tracker.style.maxHeight = Math.max(120, rect.height - 16) + "px";
-    }
-
-    var fabH = fab.offsetHeight || 250;
-    var fabTop = Math.max(headerSafe, Math.min(rect.top + 16, rect.bottom - fabH - 8));
-    fab.style.right = Math.max(8, window.innerWidth - rect.right - gap) + "px";
-    fab.style.top = fabTop + "px";
-    fab.style.bottom = "auto";
-    fab.style.transform = "none";
-  }
-
-  function scheduleLayoutSidePanels() {
-    if (sidePanelLayoutTimer) window.clearTimeout(sidePanelLayoutTimer);
-    sidePanelLayoutTimer = window.setTimeout(function () {
-      layoutSidePanels();
-      window.requestAnimationFrame(layoutSidePanels);
-    }, 50);
-  }
-
-  window.addEventListener("resize", scheduleLayoutSidePanels);
-  window.addEventListener("scroll", scheduleLayoutSidePanels, { passive: true });
 
   function setupScrollStudentTracker() {
     teardownScrollStudentTracker();
@@ -1887,7 +1844,6 @@
       el.classList.add("visible");
       teardownScrollStudentTracker();
       bindSheetAndSubjectTabs(el, spreadsheetId);
-      scheduleLayoutSidePanels();
       return;
     }
 
@@ -1898,7 +1854,6 @@
 
     bindSheetAndSubjectTabs(el, spreadsheetId);
     setupScrollStudentTracker();
-    scheduleLayoutSidePanels();
   }
 
   function bindSheetAndSubjectTabs(el, spreadsheetId) {
@@ -1942,7 +1897,6 @@
     errorEl.hidden = true;
     document.getElementById("results").classList.remove("visible");
     document.getElementById("results").innerHTML = "";
-    document.body.classList.remove("report-visible");
     teardownScrollStudentTracker();
 
     submitBtn.disabled = true;
