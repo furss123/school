@@ -39,16 +39,8 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     #form.card {
-      width: 66.67%;
-      max-width: 66.67%;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    @media (max-width: 768px) {
-      #form.card {
-        width: 100%;
-        max-width: 100%;
-      }
+      width: 100%;
+      max-width: 100%;
     }
     label { display: block; font-size: 0.875rem; font-weight: 600; color: #334155; }
     .row { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
@@ -68,7 +60,9 @@
       box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
     }
     button[type="submit"] {
-      padding: 10px 20px;
+      flex: 0 0 auto;
+      min-width: 9rem;
+      padding: 10px 40px;
       border: none;
       border-radius: 8px;
       background: #0d9488;
@@ -88,8 +82,6 @@
       color: #b91c1c;
       font-size: 0.875rem;
     }
-    .meta { margin-top: 10px; font-size: 0.75rem; color: #64748b; }
-    .meta code { font-size: 0.7rem; color: #475569; }
     #results {
       margin: 24px auto 0;
       display: none;
@@ -543,7 +535,6 @@
         <button type="submit" id="submitBtn">조회</button>
       </div>
       <p id="error" class="error" hidden></p>
-      <p id="meta" class="meta" hidden></p>
     </form>
 
     <div id="results"></div>
@@ -1794,30 +1785,6 @@
     });
 
     setupScrollStudentTracker();
-
-    var metaEl = document.getElementById("meta");
-    metaEl.hidden = false;
-    var listMeta =
-      multi && multi.sheetsMeta.listTab
-        ? ' · 명단 탭 <strong>' +
-          esc(multi.sheetsMeta.listTab.name) +
-          "</strong> (" +
-          esc(multi.sheetsMeta.listTab.rosterCount) +
-          "명)"
-        : "";
-    metaEl.innerHTML =
-      (multi
-        ? '응답 시트 <strong>' +
-          esc(multi.sheetsMeta.total) +
-          "개</strong> · " +
-          esc(multi.sheetsMeta.names.join(", ")) +
-          listMeta +
-          " · "
-        : "") +
-      '데이터 출처: <strong>공개 시트</strong>' +
-      (data.meta && data.meta.classColumn ? ' · 반: <strong>' + esc(data.meta.classColumn) + "</strong>" : "") +
-      (data.meta && data.meta.numberColumn ? ' · 번호: <strong>' + esc(data.meta.numberColumn) + "</strong>" : "") +
-      ' · ID: <code>' + esc(spreadsheetId) + "</code>";
   }
 
   var form = document.getElementById("form");
@@ -1889,7 +1856,6 @@
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
     errorEl.hidden = true;
-    document.getElementById("meta").hidden = true;
     document.getElementById("results").classList.remove("visible");
     document.getElementById("results").innerHTML = "";
     teardownScrollStudentTracker();
