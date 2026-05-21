@@ -119,6 +119,42 @@
     .done { color: #0d9488; }
     .muted { color: #94a3b8; }
     .preview { max-width: 28rem; color: #475569; word-break: break-word; }
+    .sheet-banner {
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: #ecfdf5;
+      border: 1px solid #99f6e4;
+      font-size: 0.875rem;
+      color: #115e59;
+    }
+    .sheet-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .sheet-tab {
+      padding: 6px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+    }
+    .sheet-tab:hover { border-color: #0d9488; color: #0f766e; }
+    .sheet-tab.active {
+      background: #0d9488;
+      border-color: #0d9488;
+      color: #fff;
+    }
+    .sheet-tab .count {
+      margin-left: 6px;
+      font-weight: 400;
+      opacity: 0.85;
+    }
   </style>
 </head>
 <body>
@@ -203,16 +239,33 @@
     return JSON.parse(text.slice(start, end + 1));
   }
 
-  async function fetchSheetValuesGviz(spreadsheetId) {
-    const url = "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/gviz/tq?tqx=out:json";
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("공개 시트 조회 실패 (HTTP " + res.status + "). 시트가 '링크가 있는 모든 사용자'에게 공개되어 있는지 확인하세요.");
-    const text = await res.text();
-    const json = parseGvizJson(text);
-    const table = json && json.table;
+  function parseTabsFromHtml(html) {
+    var tabs = [];
+    var re = /docs-sheet-tab[^>]*data-sheet-id="(\d+)"[^>]*aria-label="([^"]+)"/g;
+    var m;
+    while ((m = re.exec(html)) !== null) {
+      tabs.push({ gid: m[1], title: m[2] });
+    }
+    if (tabs.length) return tabs;
+    var captionRe = /docs-sheet-tab-caption">([^<]+)</g;
+    while ((m = captionRe.exec(html)) !== null) {
+      tabs.push({ gid: null, title: m[1].trim() });
+    }
+    return tabs;
+  }
+
+  async function fetchSpreadsheetTabs(spreadsheetId) {
+    var url = "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/edit?usp=sharing";
+    var res = await fetch(url);
+    if (!res.ok) throw new Error("시트 탭 목록 조회 실패 (HTTP " + res.status + "). 공개 공유 설정을 확인하세요.");
+    return parseTabsFromHtml(await res.text());
+  }
+
+  function gvizTableToValues(json) {
+    var table = json && json.table;
     if (!table || !table.rows || !table.rows.length) return [];
-    const headers = (table.cols || []).map(function (c) { return String((c && c.label) || "").trim(); });
-    const rows = table.rows.map(function (row) {
+    var headers = (table.cols || []).map(function (c) { return String((c && c.label) || "").trim(); });
+    var rows = table.rows.map(function (row) {
       return (row.c || []).map(function (cell) {
         if (cell == null) return "";
         if (cell.v != null) return String(cell.v);
@@ -221,6 +274,25 @@
       });
     });
     return [headers].concat(rows);
+  }
+
+  async function fetchSheetValuesGviz(spreadsheetId, tab) {
+    var params = new URLSearchParams({ tqx: "out:json" });
+    if (tab && tab.gid) params.set("gid", tab.gid);
+    else if (tab && tab.title) params.set("sheet", tab.title);
+    var url = "https://docs.google.com/spreadsheets/d/" + spreadsheetId + "/gviz/tq?" + params;
+    var res = await fetch(url);
+    if (!res.ok) throw new Error("공개 시트 조회 실패 (HTTP " + res.status + "). 시트가 '링크가 있는 모든 사용자'에게 공개되어 있는지 확인하세요.");
+    return gvizTableToValues(parseGvizJson(await res.text()));
+  }
+
+  async function fetchAllSheetsGviz(spreadsheetId) {
+    var tabs = await fetchSpreadsheetTabs(spreadsheetId);
+    if (!tabs.length) tabs = [{ gid: null, title: null }];
+    return Promise.all(tabs.map(async function (tab) {
+      var values = await fetchSheetValuesGviz(spreadsheetId, tab);
+      return { sheetName: tab.title || "시트1", values: values };
+    }));
   }
 
   function extractProfileMeta(text) {
@@ -454,13 +526,71 @@
     });
   }
 
+  function analyzeAllSheets(sheetInputs) {
+    var sheetAnalyses = (sheetInputs || []).map(function (item) {
+      var analysis = analyzeSheetData(item.values);
+      analysis.meta = Object.assign({}, analysis.meta, { sheetName: item.sheetName });
+      return Object.assign({ sheetName: item.sheetName }, analysis);
+    });
+    var allRows = [];
+    sheetAnalyses.forEach(function (sheet) {
+      sheet.rows.forEach(function (row) {
+        allRows.push(Object.assign({}, row, { 시트: sheet.sheetName }));
+      });
+    });
+    var combined = buildAnalysisPayload(
+      sheetAnalyses[0] && sheetAnalyses[0].headers ? sheetAnalyses[0].headers : [],
+      allRows,
+      { format: "multi", sheetCount: sheetAnalyses.length, sheetNames: sheetAnalyses.map(function (s) { return s.sheetName; }) }
+    );
+    return {
+      sheets: sheetAnalyses,
+      combined: combined,
+      sheetsMeta: {
+        total: sheetInputs.length,
+        recognized: sheetAnalyses.filter(function (s) { return s.summary.총응답 > 0; }).length,
+        names: sheetAnalyses.map(function (s) { return s.sheetName; }),
+        perSheet: sheetAnalyses.map(function (s) {
+          return { name: s.sheetName, rows: s.summary.총응답 };
+        }),
+      },
+    };
+  }
+
+  var lastMultiResult = null;
+  var activeSheetView = "combined";
+
   function esc(s) {
     var d = document.createElement("div");
     d.textContent = s == null ? "" : String(s);
     return d.innerHTML;
   }
 
-  function renderResults(data, spreadsheetId) {
+  function getActiveAnalysis() {
+    if (!lastMultiResult) return null;
+    if (activeSheetView === "combined") return lastMultiResult.combined;
+    var found = lastMultiResult.sheets.find(function (s) { return s.sheetName === activeSheetView; });
+    return found || lastMultiResult.combined;
+  }
+
+  function renderSheetTabs() {
+    if (!lastMultiResult) return "";
+    var meta = lastMultiResult.sheetsMeta;
+    var html = '<div class="sheet-banner"><strong>' + esc(meta.total) + "개 시트 중 " + esc(meta.recognized) + "개 인식</strong>";
+    if (meta.names && meta.names.length) {
+      html += " · " + esc(meta.names.join(", "));
+    }
+    html += "</div><div class=\"sheet-tabs\">";
+    html += '<button type="button" class="sheet-tab' + (activeSheetView === "combined" ? " active" : "") + '" data-sheet="combined">전체 합산<span class="count">(' + esc(lastMultiResult.combined.summary.총응답) + ")</span></button>";
+    lastMultiResult.sheets.forEach(function (sheet) {
+      var active = activeSheetView === sheet.sheetName ? " active" : "";
+      html += '<button type="button" class="sheet-tab' + active + '" data-sheet="' + esc(sheet.sheetName) + '">' + esc(sheet.sheetName) + '<span class="count">(' + esc(sheet.summary.총응답) + ")</span></button>";
+    });
+    html += "</div>";
+    return html;
+  }
+
+  function renderResults(data, spreadsheetId, multi) {
     var el = document.getElementById("results");
     var s = data.summary;
     var cards = [
@@ -472,7 +602,9 @@
       { label: "반 미입력", value: s.반미입력, suffix: "건" },
     ];
 
-    var html = '<div class="grid">';
+    var html = "";
+    if (multi) html += renderSheetTabs();
+    html += '<div class="grid">';
     cards.forEach(function (c) {
       html += '<div class="stat' + (c.highlight ? ' highlight' : '') + '">';
       html += '<p class="stat-label">' + esc(c.label) + '</p>';
@@ -506,12 +638,25 @@
       html += "</ul></section>";
     }
 
+    if (multi && multi.sheetsMeta && multi.sheetsMeta.perSheet && multi.sheetsMeta.perSheet.length) {
+      html += '<section class="block"><h2>시트별 응답 수</h2><table><thead><tr><th>시트</th><th>응답</th></tr></thead><tbody>';
+      multi.sheetsMeta.perSheet.forEach(function (row) {
+        html += "<tr><td>" + esc(row.name) + "</td><td>" + esc(row.rows) + "건</td></tr>";
+      });
+      html += "</tbody></table></section>";
+    }
+
     if (data.rows && data.rows.length) {
       var fmt = data.meta && data.meta.format === "profile" ? "학생 프로필" : "표";
+      var showSheetCol = activeSheetView === "combined" && multi;
       html += '<section class="block"><h2>응답 목록</h2><p class="hint">형식: ' + esc(fmt) + ' · 최대 50건</p>';
-      html += '<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th><th>미리보기</th></tr></thead><tbody>';
+      html += "<table><thead><tr>";
+      if (showSheetCol) html += "<th>시트</th>";
+      html += "<th>반</th><th>번호</th><th>이름</th><th>완료</th><th>미리보기</th></tr></thead><tbody>";
       data.rows.slice(0, 50).forEach(function (row) {
-        html += "<tr><td>" + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
+        html += "<tr>";
+        if (showSheetCol) html += "<td>" + esc(row.시트 || "—") + "</td>";
+        html += "<td>" + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
         html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
         html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td>";
         html += '<td class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</td></tr>";
@@ -522,10 +667,19 @@
     el.innerHTML = html;
     el.classList.add("visible");
 
+    el.querySelectorAll(".sheet-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        activeSheetView = btn.getAttribute("data-sheet") || "combined";
+        renderResults(getActiveAnalysis(), spreadsheetId, lastMultiResult);
+      });
+    });
+
     var metaEl = document.getElementById("meta");
     metaEl.hidden = false;
+    var viewLabel = activeSheetView === "combined" ? "전체 합산" : activeSheetView;
     metaEl.innerHTML =
       '데이터 출처: <strong>공개 시트</strong>' +
+      (multi ? ' · 보기: <strong>' + esc(viewLabel) + "</strong>" : "") +
       (data.meta && data.meta.classColumn ? ' · 반: <strong>' + esc(data.meta.classColumn) + "</strong>" : "") +
       (data.meta && data.meta.numberColumn ? ' · 번호: <strong>' + esc(data.meta.numberColumn) + "</strong>" : "") +
       ' · ID: <code>' + esc(spreadsheetId) + "</code>";
@@ -548,10 +702,12 @@
 
     try {
       var id = parseSpreadsheetId(sheetUrl.value);
-      var values = await fetchSheetValuesGviz(id);
-      if (!values.length) throw new Error("시트에 데이터가 없습니다. 공개 공유 설정을 확인하세요.");
-      var analysis = analyzeSheetData(values);
-      renderResults(analysis, id);
+      var sheetInputs = await fetchAllSheetsGviz(id);
+      var hasData = sheetInputs.some(function (s) { return s.values && s.values.length; });
+      if (!hasData) throw new Error("시트에 데이터가 없습니다. 공개 공유 설정을 확인하세요.");
+      lastMultiResult = analyzeAllSheets(sheetInputs);
+      activeSheetView = "combined";
+      renderResults(lastMultiResult.combined, id, lastMultiResult);
     } catch (err) {
       errorEl.textContent = err.message || "분석에 실패했습니다.";
       errorEl.hidden = false;
