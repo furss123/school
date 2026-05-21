@@ -5,6 +5,7 @@
 import groupBy from "lodash/groupBy.js";
 import sumBy from "lodash/sumBy.js";
 import {
+  extractCommonThemes,
   isProfileSheetFormat,
   normalizeProfileSheet,
 } from "./profileParse.js";
@@ -207,6 +208,8 @@ function buildAnalysisPayload(headers, rows, meta) {
 
   const columnInsights = buildColumnInsights(headers, rows);
   const themes = detectThemes(rows);
+  const commonThemes =
+    meta.format === "profile" ? extractCommonThemes(rows) : [];
 
   return {
     summary: {
@@ -221,6 +224,7 @@ function buildAnalysisPayload(headers, rows, meta) {
     byClass,
     columnInsights,
     themes,
+    commonThemes,
     headers,
     rows,
     meta: {

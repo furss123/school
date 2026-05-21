@@ -521,12 +521,9 @@
           buffer.push(quoted[1]);
           continue;
         }
-        var stripped = line
-          .replace(/^[\s💗📚📝✏️🎯⭐🔖•\-]+\s*/, "")
-          .replace(/^(선생님께\s*전하는\s*한마디|영역별[^:：]*|과목별[^:：]*|학습\s*설문[^:：]*)\s*[:：]?\s*/i, "")
-          .trim();
-        var looksHeaderOnly = stripped.length < 4 || /^(선생님께|전하는|영역별|과목별|학습\s*설문|과목\s*\d)/i.test(stripped);
-        if (!looksHeaderOnly && stripped) buffer.push(stripped);
+        var withoutEmoji = line.replace(/^[\s💗📚📝✏️🎯⭐🔖•\-]+\s*/, "").trim();
+        var shortHeader = /^(선생님께\s*전하는\s*한마디|영역별\s*\(과목별\)\s*학습\s*설문)\s*[:：]?\s*$/i.test(withoutEmoji);
+        if (!shortHeader && withoutEmoji) buffer.push(withoutEmoji);
       } else if (current) {
         buffer.push(line);
       } else {

@@ -2,10 +2,14 @@
  * 상담 분석 결과: 요약 카드, 반별 통계, 주제, 표
  */
 
+import { Fragment } from "react";
+
 export default function AnalysisResult({ data, sheetName, multiSheet }) {
   if (!data) return null;
 
-  const { summary, byClass, columnInsights, themes, rows, meta } = data;
+  const { summary, byClass, columnInsights, themes, commonThemes, rows, meta } =
+    data;
+  const isProfile = meta?.format === "profile";
 
   if (!summary?.총응답) {
     return (
@@ -64,7 +68,30 @@ export default function AnalysisResult({ data, sheetName, multiSheet }) {
         ))}
       </div>
 
-      {themes?.length > 0 && (
+      {commonThemes?.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <h2 className="text-sm font-semibold text-slate-800">공통 주제</h2>
+          <p className="mt-1 text-xs text-slate-500">
+            학생 프로필에서 자주 나타난 분류·키워드입니다.
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {commonThemes.map((t) => (
+              <li
+                key={`${t.주제}-${t.유형}`}
+                className="rounded-full bg-teal-50 px-3 py-1 text-sm text-teal-800"
+              >
+                {t.주제}{" "}
+                <span className="text-teal-600">({t.언급수})</span>
+                <span className="ml-1 text-xs text-slate-500">
+                  · {t.유형 === "category" ? "분류" : "키워드"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {themes?.length > 0 && !isProfile && (
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-sm font-semibold text-slate-800">주요 상담 주제</h2>
           <p className="mt-1 text-xs text-slate-500">
@@ -140,7 +167,7 @@ export default function AnalysisResult({ data, sheetName, multiSheet }) {
         <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <h2 className="text-sm font-semibold text-slate-800">응답 목록</h2>
           <p className="mt-1 text-xs text-slate-500">
-            형식: {meta?.format === "profile" ? "학생 프로필" : "표"} · 최대 50건
+            형식: {isProfile ? "학생 프로필 (분류별)" : "표"} · 최대 50건
           </p>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
@@ -150,29 +177,81 @@ export default function AnalysisResult({ data, sheetName, multiSheet }) {
                   <th className="py-2 pr-3">번호</th>
                   <th className="py-2 pr-3">이름</th>
                   <th className="py-2 pr-3">완료</th>
-                  <th className="py-2">미리보기</th>
+                  {!isProfile && <th className="py-2">미리보기</th>}
                 </tr>
               </thead>
               <tbody>
-                {rows.slice(0, 50).map((row) => (
-                  <tr key={row.id} className="border-b border-slate-100 align-top">
-                    <td className="py-2 pr-3 whitespace-nowrap">{row.반}</td>
-                    <td className="py-2 pr-3 tabular-nums">{row.번호 ?? "—"}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap">
-                      {row.이름 || row._raw?.이름 || "—"}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {row.완료 ? (
-                        <span className="text-teal-600">완료</span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="py-2 max-w-md text-slate-600">
-                      {row.미리보기 || row._raw?.미리보기 || "—"}
-                    </td>
-                  </tr>
-                ))}
+                {rows.slice(0, 50).map((row) =>
+                  isProfile ? (
+                    <Fragment key={row.id}>
+                      <tr
+                        className="border-b border-slate-50 align-top"
+                      >
+                        <td className="py-2 pr-3 whitespace-nowrap">{row.반}</td>
+                        <td className="py-2 pr-3 tabular-nums">
+                          {row.번호 ?? "—"}
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {row.이름 || row._raw?.이름 || "—"}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {row.완료 ? (
+                            <span className="text-teal-600">완료</span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-100">
+                        <td colSpan={4} className="pb-3">
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {(row.categoryList || []).map((item) => (
+                              <div
+                                key={item.label}
+                                className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                              >
+                                <p className="text-xs font-semibold text-teal-700">
+                                  {item.label}
+                                </p>
+                                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                                  {item.value.length > 220
+                                    ? `${item.value.slice(0, 220).trim()}…`
+                                    : item.value}
+                                </p>
+                              </div>
+                            ))}
+                            {!row.categoryList?.length && (
+                              <span className="text-slate-400">
+                                분류할 내용 없음
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  ) : (
+                    <tr
+                      key={row.id}
+                      className="border-b border-slate-100 align-top"
+                    >
+                      <td className="py-2 pr-3 whitespace-nowrap">{row.반}</td>
+                      <td className="py-2 pr-3 tabular-nums">{row.번호 ?? "—"}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {row.이름 || row._raw?.이름 || "—"}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {row.완료 ? (
+                          <span className="text-teal-600">완료</span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-2 max-w-md text-slate-600">
+                        {row.미리보기 || row._raw?.미리보기 || "—"}
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>
