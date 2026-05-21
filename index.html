@@ -1592,29 +1592,14 @@
     var p = data.participation;
     if (!p || !p.maxExpected) return "";
     var html = '<div class="participation-banner">';
-    if (p.rosterSource === "list") {
-      html +=
-        "<p>명단 기준 <strong>" +
-        esc(p.maxExpected) +
-        "명</strong> (시트 탭: <strong>" +
-        esc(p.referenceSheetName) +
-        "</strong>) · 이 탭 참여 <strong>" +
-        esc(p.participated) +
-        "</strong>명 / " +
-        esc(p.maxExpected) +
-        "명</p>";
-    } else {
-      html +=
-        "<p>전체 반 중 최대 인원 <strong>" +
-        esc(p.maxExpected) +
-        "명</strong> (기준 반: <strong>" +
-        esc(p.referenceSheetName) +
-        "</strong>) · 이 반 참여 <strong>" +
-        esc(p.participated) +
-        "</strong>명 / " +
-        esc(p.maxExpected) +
-        "명</p>";
-    }
+    html +=
+      "<p>각반 기준 총인원 <strong>" +
+      esc(p.maxExpected) +
+      "명</strong> · 설문에 참여한 인원 <strong>" +
+      esc(p.participated) +
+      "</strong>명 / " +
+      esc(p.maxExpected) +
+      "명</p>";
     if (p.missingCount > 0) {
       var labels = (p.missingStudents || []).map(formatMissingStudentLabel).filter(Boolean);
       if (!labels.length && p.missingNumbers) {
@@ -1658,7 +1643,7 @@
     var hasCategories = isProfile || (data.rows && data.rows.some(rowHasSections));
     var list = (data.rows || []).slice(0, 50);
     var sheetLabel = (data.meta && data.meta.sheetName) || activeSheetView || "";
-    var html = '<h2 class="responses-heading">학생 응답</h2>';
+    var html = '<h2 class="responses-heading">학생 응답 결과</h2>';
     html += renderParticipationBanner(data);
     var absentCount =
       data.participation && data.participation.missingCount
