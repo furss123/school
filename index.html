@@ -573,7 +573,7 @@
   function simplifySectionTitle(title) {
     if (!title) return "응답";
     var t = String(title).trim();
-    if (/💌|선생님께/.test(t)) return "💌 선생님께 전하는 한마디";
+    if (/💌|선생님께/.test(t)) return "선생님께 전하는 한마디";
     var subjectMatch = t.match(/과목\s*\d+\s*\(([^)]+)\)/);
     if (subjectMatch) return subjectMatch[1].trim();
     var lastParen = t.match(/\(([^)]+)\)\s*$/);
@@ -588,7 +588,7 @@
 
   function parseTeacherSection(chunk) {
     var headerMatch = chunk.match(/^(💌[^\n"]*)/);
-    var title = headerMatch ? headerMatch[1].trim() : "💌 선생님께 전하는 한마디";
+    var title = "선생님께 전하는 한마디";
     var quoteMatch = chunk.match(/[""]([^""]+)[""]/s) || chunk.match(/[""]([^""]+)[""]/);
     var body = quoteMatch ? quoteMatch[1].trim() : chunk.replace(/^💌[^\n]*\n?/, "").replace(title, "").trim();
     return { title: title, body: body, fields: [] };
