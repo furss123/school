@@ -393,27 +393,29 @@
     .view-tracker-status[hidden] { display: none !important; }
     .fab-stack {
       position: fixed;
-      right: 16px;
-      bottom: 24px;
+      right: calc(16px + 30mm);
+      top: 50%;
+      bottom: auto;
+      transform: translateY(-50%);
       z-index: 1000;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 8px;
+      gap: 7px;
     }
     .fab {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 72px;
-      height: 72px;
-      padding: 8px 6px;
-      border-radius: 10px;
+      width: 60px;
+      height: 60px;
+      padding: 7px 5px;
+      border-radius: 8px;
       border: 1px solid #cbd5e1;
       background: #fff;
       color: #2563eb;
-      font-size: 0.6875rem;
+      font-size: 0.5625rem;
       font-weight: 700;
       line-height: 1.2;
       cursor: pointer;
@@ -425,9 +427,9 @@
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
     }
     .fab svg {
-      width: 22px;
-      height: 22px;
-      margin-bottom: 4px;
+      width: 18px;
+      height: 18px;
+      margin-bottom: 3px;
       flex-shrink: 0;
     }
     .fab-top,
@@ -450,14 +452,17 @@
     .fab-pdf svg { fill: #fff; }
     @media (max-width: 640px) {
       .fab-stack {
-        right: 10px;
-        bottom: 16px;
-        gap: 6px;
+        right: calc(10px + 30mm);
+        gap: 5px;
       }
       .fab {
-        width: 64px;
-        height: 64px;
-        font-size: 0.625rem;
+        width: 53px;
+        height: 53px;
+        font-size: 0.5rem;
+      }
+      .fab svg {
+        width: 16px;
+        height: 16px;
       }
     }
     @media (max-width: 1100px) {
