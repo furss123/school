@@ -1330,9 +1330,7 @@
 
   function renderSheetTabs() {
     if (!lastMultiResult) return "";
-    var n = lastMultiResult.sheetsMeta.total;
-    var html = '<div class="sheet-banner">선택한 시트: <strong>' + esc(activeSheetView || "") + "</strong></div>";
-    html += '<p class="hint" style="margin:0 0 10px;font-size:0.75rem;color:#64748b;">시트 탭 (' + esc(n) + "개)</p>";
+    var html = '<div class="sheet-banner"><strong>' + esc(activeSheetView || "") + "</strong></div>";
     html += '<div class="sheet-tabs" role="tablist">';
     lastMultiResult.sheets.forEach(function (sheet) {
       var active = activeSheetView === sheet.sheetName ? " active" : "";
