@@ -590,7 +590,7 @@
       var sections = row.sections || parseSections((row._raw && row._raw.프로필) || "", null);
       for (var si = 0; si < sections.length; si++) {
         var title = sections[si].title;
-        if (!title) continue;
+        if (!title || /^[\s💌📚📖📝✏️🎯⭐🔖•\-]+$/.test(title)) continue;
         categoryFill[title] = (categoryFill[title] || 0) + 1;
       }
       var corpus = sections.map(function (s) {
@@ -831,7 +831,8 @@
       var classVal = coerceText(raw[classIdx]);
       var numberVal = coerceNumber(raw[numberIdx]);
       var nameVal = nameIdx >= 0 ? coerceText(raw[nameIdx]) : "";
-      var completionRaw = completionIdx >= 0 ? raw[completionIdx] : inferCompletionFromRow(cells, classIdx, numberIdx, nameIdx);
+      var skipCols = [classIdx, numberIdx, nameIdx].filter(function (i) { return i >= 0; });
+      var completionRaw = completionIdx >= 0 ? raw[completionIdx] : inferCompletionFromRow(cells, skipCols);
       var row = {
         id: rowIndex + 1,
         반: classVal || "(미입력)",
