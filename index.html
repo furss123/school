@@ -30,6 +30,16 @@
       padding: 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
+    #form.card {
+      width: 66.67%;
+      max-width: 66.67%;
+    }
+    @media (max-width: 768px) {
+      #form.card {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
     label { display: block; font-size: 0.875rem; font-weight: 600; color: #334155; }
     .row { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
     @media (min-width: 640px) {
@@ -307,6 +317,80 @@
       font-size: 0.8125rem;
       color: #94a3b8;
     }
+    .view-tracker {
+      position: fixed;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 999;
+      width: 148px;
+      padding: 14px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+    }
+    .view-tracker[hidden] { display: none !important; }
+    .view-tracker-head {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: #0f766e;
+      letter-spacing: -0.01em;
+    }
+    .view-tracker-head svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: #0d9488;
+    }
+    .view-tracker-fields { margin: 0; }
+    .view-tracker-row {
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 4px 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .view-tracker-row:last-of-type { margin-bottom: 0; }
+    .view-tracker-row dt {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin: 0;
+      font-size: 0.625rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .view-tracker-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      stroke: #94a3b8;
+    }
+    .view-tracker-row dd {
+      margin: 0;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #0f172a;
+      word-break: keep-all;
+    }
+    .view-tracker-status {
+      margin: 10px 0 0;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #fff7ed;
+      color: #c2410c;
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .view-tracker-status[hidden] { display: none !important; }
     .fab-stack {
       position: fixed;
       right: 16px;
@@ -314,6 +398,7 @@
       z-index: 1000;
       display: flex;
       flex-direction: column;
+      align-items: flex-end;
       gap: 8px;
     }
     .fab {
@@ -375,8 +460,12 @@
         font-size: 0.625rem;
       }
     }
+    @media (max-width: 1100px) {
+      .view-tracker { display: none !important; }
+    }
     @media print {
       .fab-stack,
+      .view-tracker,
       #form,
       header .subtitle { display: none !important; }
       .wrap { max-width: 100%; }
@@ -419,6 +508,48 @@
 
     <div id="results"></div>
   </main>
+
+  <aside class="view-tracker" id="viewTracker" hidden aria-live="polite" aria-label="현재 보고 있는 학생">
+    <div class="view-tracker-head">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" stroke="currentColor"/>
+        <circle cx="12" cy="12" r="3" stroke="currentColor"/>
+      </svg>
+      <span>지금 보는 학생</span>
+    </div>
+    <dl class="view-tracker-fields">
+      <div class="view-tracker-row">
+        <dt>
+          <svg class="view-tracker-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">
+            <path d="M3 9l9-6 9 6v11a1 1 0 01-1 1H4a1 1 0 01-1-1V9z" stroke="currentColor"/>
+            <path d="M9 22V12h6v10" stroke="currentColor"/>
+          </svg>
+          <span>반</span>
+        </dt>
+        <dd id="viewTrackerClass">—</dd>
+      </div>
+      <div class="view-tracker-row">
+        <dt>
+          <svg class="view-tracker-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">
+            <path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18" stroke="currentColor"/>
+          </svg>
+          <span>번호</span>
+        </dt>
+        <dd id="viewTrackerNum">—</dd>
+      </div>
+      <div class="view-tracker-row">
+        <dt>
+          <svg class="view-tracker-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" stroke="currentColor"/>
+            <path d="M6 21v-1a6 6 0 0112 0v1" stroke="currentColor"/>
+          </svg>
+          <span>이름</span>
+        </dt>
+        <dd id="viewTrackerName">—</dd>
+      </div>
+    </dl>
+    <p class="view-tracker-status" id="viewTrackerStatus" hidden>미참여</p>
+  </aside>
 
   <nav class="fab-stack" aria-label="페이지 도구">
     <button type="button" class="fab fab-top" id="fabTop" title="맨 위로">
@@ -1385,7 +1516,15 @@
   }
 
   function renderStudentCard(row, hasCategories) {
-    var html = '<article class="student-card">';
+    var classVal =
+      row.반 && row.반 !== "(미입력)" ? String(row.반) : activeSheetView || "";
+    var num = row.번호 != null ? String(row.번호) : "";
+    var name = row.이름 || (row._raw && row._raw.이름) || "";
+    var html = '<article class="student-card"';
+    if (classVal) html += ' data-student-class="' + esc(classVal) + '"';
+    if (num) html += ' data-student-num="' + esc(num) + '"';
+    if (name) html += ' data-student-name="' + esc(name) + '"';
+    html += ">";
     html += renderStudentResponseHeader(row);
     html += '<div class="student-response-body">';
     if (hasCategories && rowHasSections(row)) {
@@ -1458,8 +1597,11 @@
     var num = typeof student === "object" ? student.번호 : student;
     var name =
       typeof student === "object" && student.이름 ? String(student.이름) : "(미확인)";
-    var html = '<article class="student-card student-card--absent">';
-    html += '<header class="student-response-header"><div class="header-meta">';
+    var html = '<article class="student-card student-card--absent"';
+    if (sheetName) html += ' data-student-class="' + esc(sheetName) + '"';
+    if (num != null) html += ' data-student-num="' + esc(String(num)) + '"';
+    if (name) html += ' data-student-name="' + esc(name) + '"';
+    html += '><header class="student-response-header"><div class="header-meta">';
     if (sheetName) html += '<span class="student-class">' + esc(sheetName) + "</span>";
     if (num != null) html += '<span class="student-num">' + esc(num) + "번</span>";
     html += '<span class="student-name">' + esc(name) + "</span>";
@@ -1510,6 +1652,88 @@
     return html;
   }
 
+  var scrollStudentObserver = null;
+  var scrollStudentRatioMap = null;
+
+  function updateViewTracker(card) {
+    var panel = document.getElementById("viewTracker");
+    var classEl = document.getElementById("viewTrackerClass");
+    var numEl = document.getElementById("viewTrackerNum");
+    var nameEl = document.getElementById("viewTrackerName");
+    var statusEl = document.getElementById("viewTrackerStatus");
+    if (!panel || !classEl || !numEl || !nameEl) return;
+    if (!card) {
+      panel.hidden = true;
+      classEl.textContent = "—";
+      numEl.textContent = "—";
+      nameEl.textContent = "—";
+      if (statusEl) statusEl.hidden = true;
+      return;
+    }
+    var cls = card.getAttribute("data-student-class") || activeSheetView || "";
+    var num = card.getAttribute("data-student-num");
+    var name = card.getAttribute("data-student-name") || "";
+    panel.hidden = false;
+    classEl.textContent = cls || "—";
+    numEl.textContent = num ? num + "번" : "—";
+    nameEl.textContent = name || "—";
+    if (statusEl) {
+      statusEl.hidden = !card.classList.contains("student-card--absent");
+    }
+  }
+
+  function teardownScrollStudentTracker() {
+    if (scrollStudentObserver) {
+      scrollStudentObserver.disconnect();
+      scrollStudentObserver = null;
+    }
+    scrollStudentRatioMap = null;
+    updateViewTracker(null);
+  }
+
+  function setupScrollStudentTracker() {
+    teardownScrollStudentTracker();
+    var results = document.getElementById("results");
+    if (!results || !results.classList.contains("visible")) return;
+    var cards = results.querySelectorAll(".student-card[data-student-num], .student-card[data-student-name]");
+    if (!cards.length) return;
+
+    scrollStudentRatioMap = new Map();
+    var thresholds = [];
+    for (var t = 0; t <= 20; t++) thresholds.push(t / 20);
+
+    function pickCurrentCard() {
+      var best = null;
+      var bestRatio = 0;
+      cards.forEach(function (card) {
+        var ratio = scrollStudentRatioMap.get(card) || 0;
+        if (ratio > bestRatio) {
+          bestRatio = ratio;
+          best = card;
+        }
+      });
+      if (best && bestRatio > 0) {
+        updateViewTracker(best);
+      }
+    }
+
+    scrollStudentObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          scrollStudentRatioMap.set(entry.target, entry.intersectionRatio);
+        });
+        pickCurrentCard();
+      },
+      { root: null, rootMargin: "-12% 0px -50% 0px", threshold: thresholds }
+    );
+
+    cards.forEach(function (card) {
+      scrollStudentRatioMap.set(card, 0);
+      scrollStudentObserver.observe(card);
+    });
+    updateViewTracker(cards[0]);
+  }
+
   function renderResults(data, spreadsheetId, multi) {
     var el = document.getElementById("results");
     var s = data.summary;
@@ -1522,6 +1746,7 @@
       html += '<p class="student-cards-empty">이 탭에 분석할 데이터가 없습니다.</p>';
       el.innerHTML = html;
       el.classList.add("visible");
+      teardownScrollStudentTracker();
       el.querySelectorAll(".sheet-tab").forEach(function (btn) {
         btn.addEventListener("click", function () {
           activeSheetView = btn.getAttribute("data-sheet");
@@ -1542,6 +1767,8 @@
         renderResults(getActiveAnalysis(), spreadsheetId, lastMultiResult);
       });
     });
+
+    setupScrollStudentTracker();
 
     var metaEl = document.getElementById("meta");
     metaEl.hidden = false;
@@ -1640,6 +1867,7 @@
     document.getElementById("meta").hidden = true;
     document.getElementById("results").classList.remove("visible");
     document.getElementById("results").innerHTML = "";
+    teardownScrollStudentTracker();
 
     submitBtn.disabled = true;
     submitBtn.textContent = "분석 중…";
