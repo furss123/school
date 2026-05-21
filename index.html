@@ -94,7 +94,6 @@
     #results .subject-tabs,
     #results .participation-banner,
     #results .responses-heading,
-    #results .responses-hint,
     #results .student-cards,
     #results .student-cards-list,
     #results .student-card,
@@ -109,8 +108,7 @@
     #results .subject-tabs {
       justify-content: center;
     }
-    #results .responses-heading,
-    #results .responses-hint {
+    #results .responses-heading {
       text-align: center;
       width: 100%;
     }
@@ -173,11 +171,6 @@
       font-size: 0.9375rem;
       font-weight: 700;
       color: #0f172a;
-    }
-    .responses-hint {
-      margin: 0 0 12px;
-      font-size: 0.75rem;
-      color: #64748b;
     }
     .category-blocks {
       display: flex;
@@ -932,7 +925,7 @@
   function simplifySectionTitle(title) {
     if (!title) return "응답";
     var t = String(title).trim();
-    if (/💌|선생님께/.test(t)) return "선생님께 전하는 한마디";
+    if (/💌|선생님께/.test(t)) return "담임 선생님께 전하는 한마디";
     var subjectMatch = t.match(/과목\s*\d+\s*\(([^)]+)\)/);
     if (subjectMatch) return subjectMatch[1].trim();
     var lastParen = t.match(/\(([^)]+)\)\s*$/);
@@ -947,7 +940,7 @@
 
   function parseTeacherSection(chunk) {
     var headerMatch = chunk.match(/^(💌[^\n"]*)/);
-    var title = "선생님께 전하는 한마디";
+    var title = "담임 선생님께 전하는 한마디";
     var quoteMatch = chunk.match(/[""]([^""]+)[""]/s) || chunk.match(/[""]([^""]+)[""]/);
     var body = quoteMatch ? quoteMatch[1].trim() : chunk.replace(/^💌[^\n]*\n?/, "").replace(title, "").trim();
     return { title: title, body: body, fields: [] };
@@ -1536,7 +1529,7 @@
     if (!subjectId || subjectId === "all") return true;
     if (!isMeaningfulSection(sec)) return false;
     var title = simplifySectionTitle(sec.title || "");
-    if (title === "선생님께 전하는 한마디") return false;
+    if (title === "담임 선생님께 전하는 한마디") return false;
     if (title === subjectId) return true;
     if (title.indexOf(subjectId) >= 0) return true;
     return false;
@@ -1711,16 +1704,6 @@
     var sheetLabel = (data.meta && data.meta.sheetName) || activeSheetView || "";
     var html = '<h2 class="responses-heading">학생 응답 결과</h2>';
     html += renderParticipationBanner(data);
-    var absentCount =
-      data.participation && data.participation.missingCount
-        ? data.participation.missingCount
-        : 0;
-    html +=
-      '<p class="responses-hint">참여 ' +
-      esc(list.length) +
-      "명" +
-      (absentCount ? " · 미참여 " + esc(absentCount) + "명" : "") +
-      " · 최대 50건 표시</p>";
     html += '<div class="student-cards student-cards-list">';
     list.forEach(function (row) {
       html += renderStudentCard(row, hasCategories);
