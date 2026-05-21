@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>상담 분석</title>
+  <!-- ui-version: 20260522-student-cards -->
   <style>
     * { box-sizing: border-box; }
     body {
@@ -73,21 +74,42 @@
     #results.visible { display: block; }
     .muted { color: #94a3b8; }
     .preview { color: #475569; word-break: break-word; line-height: 1.5; }
-    .student-cards {
+    .student-cards,
+    .student-cards-list {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 20px;
       margin-top: 8px;
     }
     .student-card {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
       background: #fff;
       border: 1px solid #e2e8f0;
       border-radius: 14px;
-      padding: 16px 18px;
+      padding: 16px 18px 0;
       box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+      margin-bottom: 4px;
+    }
+    .student-card:last-child {
+      margin-bottom: 0;
     }
     @media (min-width: 640px) {
-      .student-card { padding: 18px 22px; }
+      .student-card { padding: 18px 22px 0; }
+    }
+    .student-response-body {
+      flex: 1 1 auto;
+      padding-bottom: 14px;
+    }
+    .student-card-divider {
+      margin: 0;
+      border: none;
+      border-top: 2px solid #e5e7eb;
+      height: 0;
+    }
+    .student-card:last-child .student-card-divider {
+      border-top-color: #f1f5f9;
     }
     .student-cards-empty {
       padding: 24px 16px;
@@ -143,13 +165,15 @@
     }
     .student-response-header {
       display: flex;
+      flex-direction: row;
       flex-wrap: wrap;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 8px 12px;
-      margin: 0 0 14px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #e2e8f0;
+      flex-shrink: 0;
+      margin: 0 0 12px;
+      padding: 0 0 12px;
+      border-bottom: 2px solid #e2e8f0;
       font-weight: 600;
       line-height: 1.35;
     }
@@ -158,10 +182,24 @@
       flex-wrap: wrap;
       align-items: baseline;
       gap: 6px 10px;
+      min-width: 0;
     }
-    .student-response-header .student-class { color: #0f766e; font-size: 0.875rem; }
-    .student-response-header .student-num { color: #475569; font-size: 0.8125rem; font-weight: 500; }
-    .student-response-header .student-name { color: #0f172a; font-size: 1rem; }
+    .student-response-header .student-class {
+      color: #0f766e;
+      font-size: 0.9375rem;
+      font-weight: 700;
+    }
+    .student-response-header .student-num {
+      color: #475569;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    .student-response-header .student-name {
+      color: #0f172a;
+      font-size: 1.125rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
     .status-badge {
       flex-shrink: 0;
       padding: 3px 10px;
@@ -963,7 +1001,7 @@
     var numLabel = row.번호 != null ? String(row.번호) + "번" : "";
     var nameLabel = row.이름 || (row._raw && row._raw.이름) || "";
     if (!classLabel && !numLabel && !nameLabel) return "";
-    var html = '<div class="student-response-header"><div class="header-meta">';
+    var html = '<header class="student-response-header"><div class="header-meta">';
     if (classLabel) html += '<span class="student-class">' + esc(classLabel) + "</span>";
     if (numLabel) html += '<span class="student-num">' + esc(numLabel) + "</span>";
     if (nameLabel) html += '<span class="student-name">' + esc(nameLabel) + "</span>";
@@ -973,7 +1011,7 @@
     } else if (row.완료 === false) {
       html += '<span class="status-badge pending">미완료</span>';
     }
-    html += "</div>";
+    html += "</header>";
     return html;
   }
 
@@ -1003,6 +1041,7 @@
   function renderStudentCard(row, hasCategories) {
     var html = '<article class="student-card">';
     html += renderStudentResponseHeader(row);
+    html += '<div class="student-response-body">';
     if (hasCategories && rowHasSections(row)) {
       html += renderCategoryBlocks(row);
     } else if (hasCategories) {
@@ -1010,6 +1049,8 @@
     } else {
       html += '<div class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</div>";
     }
+    html += "</div>";
+    html += '<hr class="student-card-divider" aria-hidden="true" />';
     html += "</article>";
     return html;
   }
@@ -1021,7 +1062,7 @@
     var list = data.rows.slice(0, 50);
     var html = '<h2 class="responses-heading">학생 응답</h2>';
     html += '<p class="responses-hint">' + esc(list.length) + "명 · 최대 50건 표시</p>";
-    html += '<div class="student-cards">';
+    html += '<div class="student-cards student-cards-list">';
     list.forEach(function (row) {
       html += renderStudentCard(row, hasCategories);
     });
