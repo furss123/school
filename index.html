@@ -119,40 +119,39 @@
     .done { color: #0d9488; }
     .muted { color: #94a3b8; }
     .preview { max-width: 28rem; color: #475569; word-break: break-word; }
-    .profile-row td { border-bottom: none; padding-bottom: 4px; }
-    .profile-cats td {
-      padding: 0 0 12px 0;
-      border-bottom: 1px solid #f1f5f9;
-      vertical-align: top;
-    }
-    .category-grid {
-      display: grid;
-      gap: 8px;
-      margin-top: 4px;
-    }
-    @media (min-width: 640px) {
-      .category-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    .category-card {
+    .category-blocks { display: flex; flex-direction: column; gap: 10px; max-width: 42rem; }
+    .category-block {
       padding: 10px 12px;
       border-radius: 8px;
       background: #f8fafc;
       border: 1px solid #e2e8f0;
     }
-    .category-card .cat-label {
-      display: block;
-      font-size: 0.7rem;
+    .category-block .cat-title {
+      font-size: 0.75rem;
       font-weight: 700;
       color: #0d9488;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      line-height: 1.35;
     }
-    .category-card .cat-value {
+    .category-block .cat-body {
       font-size: 0.8125rem;
       color: #334155;
       word-break: break-word;
       white-space: pre-wrap;
       line-height: 1.45;
     }
+    .category-block .cat-field {
+      font-size: 0.8125rem;
+      color: #334155;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+    .category-block .cat-field span {
+      font-weight: 600;
+      color: #475569;
+      margin-right: 4px;
+    }
+    td.col-categories { vertical-align: top; max-width: 42rem; }
     .common-themes .tags li span.type {
       font-size: 0.7rem;
       color: #64748b;
@@ -429,20 +428,10 @@
     }));
   }
 
-  var PROFILE_HEADER_PATTERN = /^\[\d+반\]\s*\[\d+\]\s*\[[^\]]+\]\s*학생\s*프로필\s*/i;
-  var CATEGORY_DEFS = [
-    { key: "선생님께 한마디", patterns: [/선생님께/, /전하는\s*한마디/, /💗/] },
-    { key: "과목별 학습 설문", patterns: [/영역별/, /과목별/, /학습\s*설문/, /📚/, /과목\s*\d/] },
-    { key: "공부 시작 시기", patterns: [/공부\s*시작\s*시기/] },
-    { key: "공부 방법", patterns: [/공부\s*방법/] },
-    { key: "시험 전 자신감", patterns: [/시험\s*전\s*자신감/, /자신감\s*[:：]/] }
-  ];
-  var FIELD_LINES = [
-    { key: "공부 시작 시기", re: /^공부\s*시작\s*시기\s*[:：]\s*(.*)$/i },
-    { key: "공부 방법", re: /^공부\s*방법\s*[:：]\s*(.*)$/i },
-    { key: "시험 전 자신감", re: /^시험\s*전\s*자신감\s*[:：]\s*(.*)$/i }
-  ];
-  var CATEGORY_ORDER = ["선생님께 한마디", "과목별 학습 설문", "공부 시작 시기", "공부 방법", "시험 전 자신감", "기타"];
+  var PROFILE_HEADER_PATTERN = /^(?:👤\s*)?\[\d+반\]\s*\[\d+\]\s*\[[^\]]+\]\s*학생\s*프로필\s*/i;
+  var PROFILE_MARKERS_RE = /학생\s*프로필|💌|📚|📖|📝|영역별\s*\(|선생님께\s*전하는/;
+  var SECTION_START_RE = /(?=(?:💌|📚|📖|📝|✏️|🎯)|영역별\s*\()/;
+  var SUBJECT_START_RE = /(?=과목\s*\d+\s*\([^)]+\))/;
   var PROFILE_KEYWORD_THEMES = [
     { re: /국어|수학|영어|과학|사회|음악|체육|미술|역사|도덕|기술|정보/gi, label: "과목 언급" },
     { re: /자신감|불안|긴장|걱정/gi, label: "시험·정서" },
@@ -455,28 +444,27 @@
     return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
-  function detectCategory(line) {
-    for (var i = 0; i < CATEGORY_DEFS.length; i++) {
-      var def = CATEGORY_DEFS[i];
-      for (var j = 0; j < def.patterns.length; j++) {
-        if (def.patterns[j].test(line)) return def.key;
-      }
-    }
-    return null;
+  function hasProfileContent(text) {
+    var s = String(text || "").trim();
+    if (!s) return false;
+    return PROFILE_PATTERN.test(s) || PROFILE_MARKERS_RE.test(s);
   }
 
-  function appendChunk(target, key, chunk) {
-    var v = String(chunk || "").trim();
-    if (!v) return;
-    target[key] = target[key] ? target[key] + "\n" + v : v;
+  function longestCellText(cells) {
+    var best = "";
+    for (var i = 0; i < (cells || []).length; i++) {
+      var c = String(cells[i] || "").trim();
+      if (c.length > best.length) best = c;
+    }
+    return best;
   }
 
   function stripProfileHeader(text, meta) {
-    var s = String(text || "").trim();
+    var s = String(text || "").trim().replace(/^👤\s*/, "");
     if (meta && meta.반 != null && meta.번호 != null && meta.이름) {
       var classNum = String(meta.반).replace(/반$/, "");
       var specific = new RegExp(
-        "^\\[" + escapeRegex(classNum) + "반\\]\\s*\\[" + meta.번호 + "\\]\\s*\\[" + escapeRegex(meta.이름) + "\\]\\s*학생\\s*프로필\\s*",
+        "^\\[?" + escapeRegex(classNum) + "반\\]?\\s*\\[?" + meta.번호 + "\\]?\\s*\\[?" + escapeRegex(meta.이름) + "\\]?\\s*학생\\s*프로필\\s*",
         "i"
       );
       s = s.replace(specific, "");
@@ -484,73 +472,114 @@
     return s.replace(PROFILE_HEADER_PATTERN, "").trim();
   }
 
-  function parseProfileCategories(text, meta) {
-    var body = stripProfileHeader(text, meta);
-    if (!body) return {};
-    var result = {};
-    var current = null;
-    var buffer = [];
-    function flush() {
-      if (current && buffer.length) {
-        appendChunk(result, current, buffer.join("\n"));
-        buffer = [];
+  function parseSectionFields(body) {
+    var fields = [];
+    var text = String(body || "").trim();
+    if (!text) return fields;
+    var re = /(?:^|[\n\r]|\s)-\s*([^:\n]+?)\s*:\s*([\s\S]*?)(?=(?:[\n\r]|\s)-\s*[^:]+:|$)/g;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      var key = m[1].trim();
+      var val = m[2].trim().replace(/\s+/g, " ");
+      if (key && val) fields.push({ key: key, value: val });
+    }
+    if (!fields.length) {
+      var inline = /-\s*([^:]+?)\s*:\s*([^-]+?)(?=\s*-\s*[^:]+:|$)/g;
+      while ((m = inline.exec(text)) !== null) {
+        fields.push({ key: m[1].trim(), value: m[2].trim() });
       }
     }
-    var lines = body.split(/\r?\n/);
-    for (var li = 0; li < lines.length; li++) {
-      var line = lines[li].trim();
-      if (!line) continue;
-      var fieldHandled = false;
-      for (var fi = 0; fi < FIELD_LINES.length; fi++) {
-        var fm = line.match(FIELD_LINES[fi].re);
-        if (fm) {
-          flush();
-          current = null;
-          appendChunk(result, FIELD_LINES[fi].key, fm[1] || "");
-          fieldHandled = true;
-          break;
-        }
-      }
-      if (fieldHandled) continue;
-      var cat = detectCategory(line);
-      if (cat) {
-        flush();
-        current = cat;
-        var quoted = line.match(/[""]([^""]+)[""]/);
-        if (quoted) {
-          buffer.push(quoted[1]);
-          continue;
-        }
-        var withoutEmoji = line.replace(/^[\s💗📚📝✏️🎯⭐🔖•\-]+\s*/, "").trim();
-        var shortHeader = /^(선생님께\s*전하는\s*한마디|영역별\s*\(과목별\)\s*학습\s*설문)\s*[:：]?\s*$/i.test(withoutEmoji);
-        if (!shortHeader && withoutEmoji) buffer.push(withoutEmoji);
-      } else if (current) {
-        buffer.push(line);
-      } else {
-        appendChunk(result, "기타", line);
-      }
-    }
-    flush();
-    if (!Object.keys(result).length) result["기타"] = body;
-    return result;
+    return fields;
   }
 
-  function categoriesToList(categories) {
-    var ordered = [];
-    var seen = {};
-    for (var i = 0; i < CATEGORY_ORDER.length; i++) {
-      var key = CATEGORY_ORDER[i];
-      if (categories[key] && String(categories[key]).trim()) {
-        ordered.push({ label: key, value: String(categories[key]).trim() });
-        seen[key] = true;
+  function parseTeacherSection(chunk) {
+    var headerMatch = chunk.match(/^(💌[^\n"]*)/);
+    var title = headerMatch ? headerMatch[1].trim() : "💌 선생님께 전하는 한마디";
+    var quoteMatch = chunk.match(/[""]([^""]+)[""]/s) || chunk.match(/[""]([^""]+)[""]/);
+    var body = quoteMatch ? quoteMatch[1].trim() : chunk.replace(/^💌[^\n]*\n?/, "").replace(title, "").trim();
+    return { title: title, body: body, fields: [] };
+  }
+
+  function parseSubjectSections(chunk, parentTitle) {
+    var sections = [];
+    var parent = parentTitle || "";
+    var parts = chunk.split(SUBJECT_START_RE).map(function (p) { return p.trim(); }).filter(Boolean);
+    if (parts.length <= 1 && /과목\s*\d+\s*\(/.test(chunk)) parts = [chunk];
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i];
+      var subjMatch = part.match(/^(과목\s*\d+\s*\([^)]+\))/);
+      if (!subjMatch) continue;
+      var subjTitle = subjMatch[1].trim();
+      var title = parent ? parent.replace(/\s+$/, "") + " " + subjTitle : "📚 " + subjTitle;
+      if (/영역별/.test(part) && !parent) {
+        var areaMatch = part.match(/((?:📚\s*)?영역별\s*\([^)]+\)[^\n]*?(?:학습\s*설문[^:\n]*)?)/);
+        if (areaMatch) title = areaMatch[1].trim() + " " + subjTitle;
+      }
+      var bodyStart = part.slice(subjMatch[0].length).trim();
+      sections.push({ title: title, body: "", fields: parseSectionFields(bodyStart) });
+    }
+    return sections;
+  }
+
+  function parseSections(text, meta) {
+    var body = stripProfileHeader(text, meta);
+    if (!body) return [];
+    body = body.replace(/^👤\s*/, "").trim();
+    var sections = [];
+    var chunks = body.split(SECTION_START_RE).map(function (c) { return c.trim(); }).filter(Boolean);
+    var surveyParent = "";
+    for (var ci = 0; ci < chunks.length; ci++) {
+      var chunk = chunks[ci];
+      if (/^💌/.test(chunk)) {
+        sections.push(parseTeacherSection(chunk));
+        continue;
+      }
+      if (/^📚|^영역별/.test(chunk)) {
+        var parentMatch = chunk.match(/^((?:📚\s*)?영역별\s*\([^)]+\)\s*학습\s*설문[^\n]*)/)
+          || chunk.match(/^(📚[^\n]+)/)
+          || chunk.match(/^(영역별\s*\([^)]+\)[^\n]*)/);
+        surveyParent = parentMatch ? parentMatch[1].trim() : chunk.split(/\n/)[0].trim();
+        if (/과목\s*\d+\s*\(/.test(chunk)) {
+          sections = sections.concat(parseSubjectSections(chunk, surveyParent));
+        } else if (!SUBJECT_START_RE.test(chunk)) {
+          sections.push({ title: surveyParent, body: chunk.replace(surveyParent, "").trim(), fields: [] });
+        }
+        continue;
+      }
+      if (/^과목\s*\d+\s*\(/.test(chunk)) {
+        sections = sections.concat(parseSubjectSections(chunk, surveyParent));
+        continue;
+      }
+      var firstLine = chunk.split(/\n/)[0].trim();
+      if (firstLine) {
+        sections.push({ title: firstLine, body: chunk.slice(firstLine.length).trim(), fields: parseSectionFields(chunk) });
       }
     }
-    for (var k in categories) {
-      if (!seen[k] && categories[k] && String(categories[k]).trim()) {
-        ordered.push({ label: k, value: String(categories[k]).trim() });
-      }
+    return sections.filter(function (s) {
+      return s.title || s.body || (s.fields && s.fields.length);
+    });
+  }
+
+  function parseProfileCategories(text, meta) {
+    return parseSections(text, meta);
+  }
+
+  function rowHasSections(row) {
+    return !!(row && row.sections && row.sections.length);
+  }
+
+  function enrichRowWithProfile(row, profileText, meta) {
+    if (!hasProfileContent(profileText)) return row;
+    var m = meta || extractProfileMeta(profileText);
+    row.sections = parseSections(profileText, m);
+    if (m) {
+      if (!row.반 || row.반 === "(미입력)") row.반 = m.반;
+      if (row.번호 == null) row.번호 = m.번호;
+      if (!row.이름) row.이름 = m.이름;
     }
-    return ordered;
+    row._raw = row._raw || {};
+    row._raw.프로필 = profileText;
+    return row;
   }
 
   function extractCommonThemes(rows) {
@@ -558,12 +587,15 @@
     var keywordHits = {};
     for (var ri = 0; ri < rows.length; ri++) {
       var row = rows[ri];
-      var cats = row.categories || parseProfileCategories((row._raw && row._raw.프로필) || "", null);
-      for (var ck in cats) {
-        if (!cats[ck] || !String(cats[ck]).trim() || ck === "기타") continue;
-        categoryFill[ck] = (categoryFill[ck] || 0) + 1;
+      var sections = row.sections || parseSections((row._raw && row._raw.프로필) || "", null);
+      for (var si = 0; si < sections.length; si++) {
+        var title = sections[si].title;
+        if (!title) continue;
+        categoryFill[title] = (categoryFill[title] || 0) + 1;
       }
-      var corpus = Object.keys(cats).map(function (k) { return cats[k]; }).join(" ");
+      var corpus = sections.map(function (s) {
+        return (s.body || "") + " " + (s.fields || []).map(function (f) { return f.value; }).join(" ");
+      }).join(" ");
       for (var ti = 0; ti < PROFILE_KEYWORD_THEMES.length; ti++) {
         var theme = PROFILE_KEYWORD_THEMES[ti];
         var matches = corpus.match(theme.re);
@@ -591,13 +623,16 @@
 
   function isProfileSheetFormat(rawValues) {
     if (!rawValues || !rawValues.length) return false;
-    const sampleRows = rawValues.slice(0, Math.min(5, rawValues.length));
+    var sampleRows = rawValues.slice(0, Math.min(8, rawValues.length));
     var hits = 0, checked = 0;
     for (var i = 0; i < sampleRows.length; i++) {
-      var text = (sampleRows[i] || []).map(function (c) { return String(c || "").trim(); }).join(" ");
+      var cells = sampleRows[i] || [];
+      var joined = cells.map(function (c) { return String(c || "").trim(); }).join(" ");
+      var longest = longestCellText(cells);
+      var text = longest.length > joined.length * 0.55 ? longest : joined;
       if (!text) continue;
       checked += 1;
-      if (PROFILE_PATTERN.test(text)) hits += 1;
+      if (hasProfileContent(text)) hits += 1;
     }
     return checked > 0 && hits >= Math.ceil(checked / 2);
   }
@@ -607,18 +642,18 @@
       return row && row.some(function (cell) { return String(cell || "").trim() !== ""; });
     });
     var rows = dataRows.map(function (raw, rowIndex) {
-      var text = raw.map(function (c) { return String(c || "").trim(); }).join("\n").trim();
+      var text = longestCellText(raw.map(function (c) { return String(c || "").trim(); }));
+      if (!text) text = raw.map(function (c) { return String(c || "").trim(); }).join("\n").trim();
       var meta = extractProfileMeta(text);
-      if (!meta) return null;
-      var categories = parseProfileCategories(text, meta);
-      var categoryList = categoriesToList(categories);
+      if (!meta && !hasProfileContent(text)) return null;
+      if (!meta) meta = { 반: "(미입력)", 번호: rowIndex + 1, 이름: "" };
+      var sections = parseSections(text, meta);
       return {
         id: rowIndex + 1,
         반: meta.반,
         번호: meta.번호,
         이름: meta.이름,
-        categories: categories,
-        categoryList: categoryList,
+        sections: sections,
         _raw: { 이름: meta.이름, 프로필: text, 본문: stripProfileHeader(text, meta) },
         완료: true,
       };
@@ -764,7 +799,7 @@
       byClass: byClass,
       columnInsights: buildColumnInsights(headers, rows),
       themes: detectThemes(rows),
-      commonThemes: meta.format === "profile" ? extractCommonThemes(rows) : [],
+      commonThemes: (meta.format === "profile" || rows.some(rowHasSections)) ? extractCommonThemes(rows) : [],
       headers: headers,
       rows: rows,
       meta: Object.assign({}, meta, { totalRows: total, classCount: Object.keys(grouped).length }),
@@ -797,7 +832,7 @@
       var numberVal = coerceNumber(raw[numberIdx]);
       var nameVal = nameIdx >= 0 ? coerceText(raw[nameIdx]) : "";
       var completionRaw = completionIdx >= 0 ? raw[completionIdx] : inferCompletionFromRow(cells, classIdx, numberIdx, nameIdx);
-      return {
+      var row = {
         id: rowIndex + 1,
         반: classVal || "(미입력)",
         번호: numberVal,
@@ -806,6 +841,8 @@
         미리보기: pickContentPreview(headerRow, cells),
         _raw: Object.fromEntries(headerRow.map(function (h, i) { return [h || "col_" + i, cells[i]]; })),
       };
+      var profileText = longestCellText(cells);
+      return enrichRowWithProfile(row, profileText, extractProfileMeta(profileText));
     });
 
     return buildAnalysisPayload(headerRow, rows, {
@@ -880,14 +917,23 @@
     return html;
   }
 
-  function renderCategoryCards(row) {
-    var list = row.categoryList || categoriesToList(row.categories || {});
-    if (!list.length) return '<span class="muted">분류할 내용 없음</span>';
-    var html = '<div class="category-grid">';
-    list.forEach(function (item) {
-      var val = item.value.length > 220 ? item.value.slice(0, 220).trim() + "…" : item.value;
-      html += '<div class="category-card"><span class="cat-label">' + esc(item.label) + '</span>';
-      html += '<span class="cat-value">' + esc(val) + "</span></div>";
+  function renderCategoryBlocks(row) {
+    var sections = row.sections || [];
+    if (!sections.length) return '<span class="muted">분류할 내용 없음</span>';
+    var html = '<div class="category-blocks">';
+    sections.forEach(function (sec) {
+      html += '<div class="category-block">';
+      html += '<div class="cat-title">' + esc(sec.title || "응답") + "</div>";
+      if (sec.body) {
+        var body = sec.body.length > 400 ? sec.body.slice(0, 400).trim() + "…" : sec.body;
+        html += '<div class="cat-body">' + esc(body) + "</div>";
+      }
+      if (sec.fields && sec.fields.length) {
+        sec.fields.forEach(function (f) {
+          html += '<div class="cat-field"><span>' + esc(f.key) + "</span> " + esc(f.value) + "</div>";
+        });
+      }
+      html += "</div>";
     });
     html += "</div>";
     return html;
@@ -967,27 +1013,23 @@
 
     if (data.rows && data.rows.length) {
       var isProfile = data.meta && data.meta.format === "profile";
-      var fmt = isProfile ? "학생 프로필 (분류별)" : "표";
+      var hasCategories = isProfile || data.rows.some(rowHasSections);
+      var fmt = hasCategories ? "학생 프로필 (카테고리별)" : "표";
       html += '<section class="block"><h2>응답 목록</h2><p class="hint">형식: ' + esc(fmt) + ' · 최대 50건</p>';
-      if (isProfile) {
-        html += "<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th></tr></thead><tbody>";
-        data.rows.slice(0, 50).forEach(function (row) {
-          html += '<tr class="profile-row"><td>' + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
-          html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
-          html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td></tr>";
-          html += '<tr class="profile-cats"><td colspan="4">' + renderCategoryCards(row) + "</td></tr>";
-        });
-        html += "</tbody></table>";
-      } else {
-        html += "<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th><th>미리보기</th></tr></thead><tbody>";
-        data.rows.slice(0, 50).forEach(function (row) {
-          html += "<tr><td>" + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
-          html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
-          html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td>";
-          html += '<td class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</td></tr>";
-        });
-        html += "</tbody></table>";
-      }
+      html += "<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th>";
+      html += "<th>" + (hasCategories ? "카테고리별 응답" : "미리보기") + "</th></tr></thead><tbody>";
+      data.rows.slice(0, 50).forEach(function (row) {
+        html += "<tr><td>" + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
+        html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
+        html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td>";
+        if (hasCategories && rowHasSections(row)) {
+          html += '<td class="col-categories">' + renderCategoryBlocks(row) + "</td>";
+        } else {
+          html += '<td class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</td>";
+        }
+        html += "</tr>";
+      });
+      html += "</tbody></table>";
       html += "</section>";
     }
 
