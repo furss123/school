@@ -7,10 +7,13 @@
   <!-- ui-version: 20260522-list-roster-participation -->
   <style>
     * { box-sizing: border-box; }
+    html {
+      font-size: calc(14px + 1pt);
+    }
     body {
       margin: 0;
       font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
-      font-size: 14px;
+      font-size: 1rem;
       line-height: 1.5;
       color: #0f172a;
       background: #f8fafc;
@@ -19,7 +22,12 @@
       border-bottom: 1px solid #e2e8f0;
       background: #fff;
     }
-    .wrap { max-width: 1400px; margin: 0 auto; padding: 24px 16px; }
+    .wrap {
+      max-width: 210mm;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
     h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
     .subtitle { margin: 6px 0 0; font-size: 0.875rem; color: #64748b; }
     main { padding: 24px 16px 48px; }
@@ -33,6 +41,8 @@
     #form.card {
       width: 66.67%;
       max-width: 66.67%;
+      margin-left: auto;
+      margin-right: auto;
     }
     @media (max-width: 768px) {
       #form.card {
@@ -81,12 +91,35 @@
     .meta { margin-top: 10px; font-size: 0.75rem; color: #64748b; }
     .meta code { font-size: 0.7rem; color: #475569; }
     #results {
-      margin-top: 24px;
+      margin: 24px auto 0;
       display: none;
       width: 100%;
-      max-width: 100%;
+      max-width: 210mm;
     }
     #results.visible { display: block; }
+    #results .sheet-banner,
+    #results .sheet-tabs,
+    #results .participation-banner,
+    #results .responses-heading,
+    #results .responses-hint,
+    #results .student-cards,
+    #results .student-cards-list,
+    #results .student-card,
+    #results .student-cards-empty {
+      margin-left: auto;
+      margin-right: auto;
+    }
+    #results .sheet-banner {
+      text-align: center;
+    }
+    #results .sheet-tabs {
+      justify-content: center;
+    }
+    #results .responses-heading,
+    #results .responses-hint {
+      text-align: center;
+      width: 100%;
+    }
     .muted { color: #94a3b8; }
     .preview { color: #475569; word-break: break-word; line-height: 1.5; }
     .student-cards,
@@ -469,11 +502,13 @@
       .view-tracker { display: none !important; }
     }
     @media print {
+      @page { size: A4; margin: 12mm; }
       .fab-stack,
       .view-tracker,
       #form,
       header .subtitle { display: none !important; }
-      .wrap { max-width: 100%; }
+      .wrap,
+      #results { max-width: 100%; }
       .student-cards-list {
         display: block;
       }
