@@ -152,6 +152,21 @@
       margin-right: 4px;
     }
     td.col-categories { vertical-align: top; max-width: 42rem; }
+    .student-response-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px 10px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .student-response-header .student-class { color: #0f766e; font-size: 0.875rem; }
+    .student-response-header .student-num { color: #475569; font-size: 0.8125rem; font-weight: 500; }
+    .student-response-header .student-name { color: #0f172a; font-size: 0.9375rem; }
+    th.col-response { min-width: 12rem; }
     .common-themes .tags li span.type {
       font-size: 0.7rem;
       color: #64748b;
@@ -918,9 +933,22 @@
     return html;
   }
 
+  function renderStudentResponseHeader(row) {
+    var classLabel = row.반 && row.반 !== "(미입력)" ? String(row.반) : "";
+    var numLabel = row.번호 != null ? String(row.번호) + "번" : "";
+    var nameLabel = row.이름 || (row._raw && row._raw.이름) || "";
+    if (!classLabel && !numLabel && !nameLabel) return "";
+    var html = '<div class="student-response-header">';
+    if (classLabel) html += '<span class="student-class">' + esc(classLabel) + "</span>";
+    if (numLabel) html += '<span class="student-num">' + esc(numLabel) + "</span>";
+    if (nameLabel) html += '<span class="student-name">' + esc(nameLabel) + "</span>";
+    html += "</div>";
+    return html;
+  }
+
   function renderCategoryBlocks(row) {
     var sections = row.sections || [];
-    if (!sections.length) return '<span class="muted">분류할 내용 없음</span>';
+    if (!sections.length) return "";
     var html = '<div class="category-blocks">';
     sections.forEach(function (sec) {
       html += '<div class="category-block">';
@@ -937,6 +965,20 @@
       html += "</div>";
     });
     html += "</div>";
+    return html;
+  }
+
+  function renderStudentResponseCell(row, hasCategories) {
+    var html = '<td class="col-categories">';
+    html += renderStudentResponseHeader(row);
+    if (hasCategories && rowHasSections(row)) {
+      html += renderCategoryBlocks(row);
+    } else if (hasCategories) {
+      html += '<span class="muted">분류할 내용 없음</span>';
+    } else {
+      html += '<div class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</div>";
+    }
+    html += "</td>";
     return html;
   }
 
@@ -1017,17 +1059,12 @@
       var hasCategories = isProfile || data.rows.some(rowHasSections);
       var fmt = hasCategories ? "학생 프로필 (카테고리별)" : "표";
       html += '<section class="block"><h2>응답 목록</h2><p class="hint">형식: ' + esc(fmt) + ' · 최대 50건</p>';
-      html += "<table><thead><tr><th>반</th><th>번호</th><th>이름</th><th>완료</th>";
-      html += "<th>" + (hasCategories ? "카테고리별 응답" : "미리보기") + "</th></tr></thead><tbody>";
+      html += "<table><thead><tr><th>완료</th>";
+      html += '<th class="col-response">' + (hasCategories ? "카테고리별 응답" : "응답") + "</th></tr></thead><tbody>";
       data.rows.slice(0, 50).forEach(function (row) {
-        html += "<tr><td>" + esc(row.반) + "</td><td>" + esc(row.번호 != null ? row.번호 : "—") + "</td>";
-        html += "<td>" + esc(row.이름 || (row._raw && row._raw.이름) || "—") + "</td>";
+        html += "<tr>";
         html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td>";
-        if (hasCategories && rowHasSections(row)) {
-          html += '<td class="col-categories">' + renderCategoryBlocks(row) + "</td>";
-        } else {
-          html += '<td class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</td>";
-        }
+        html += renderStudentResponseCell(row, hasCategories);
         html += "</tr>";
       });
       html += "</tbody></table>";
