@@ -91,6 +91,7 @@
     #results.visible { display: block; }
     #results .sheet-banner,
     #results .sheet-tabs,
+    #results .subject-tabs,
     #results .participation-banner,
     #results .responses-heading,
     #results .responses-hint,
@@ -104,7 +105,8 @@
     #results .sheet-banner {
       text-align: center;
     }
-    #results .sheet-tabs {
+    #results .sheet-tabs,
+    #results .subject-tabs {
       justify-content: center;
     }
     #results .responses-heading,
@@ -309,6 +311,32 @@
       margin-left: 6px;
       font-weight: 400;
       opacity: 0.85;
+    }
+    .subject-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .subject-tab {
+      padding: 6px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+    }
+    .subject-tab:hover { border-color: #0d9488; color: #0f766e; }
+    .subject-tab.active {
+      background: #0f766e;
+      border-color: #0f766e;
+      color: #fff;
+    }
+    .subject-empty {
+      margin: 0;
+      font-size: 0.8125rem;
     }
     .participation-banner {
       margin-bottom: 16px;
@@ -1460,6 +1488,16 @@
   var sheetsData = {};
   var lastMultiResult = null;
   var activeSheetView = null;
+  var activeSubjectView = "all";
+  var SUBJECT_FILTER_OPTIONS = [
+    { id: "all", label: "모든 과목" },
+    { id: "국어", label: "국어" },
+    { id: "수학", label: "수학" },
+    { id: "영어", label: "영어" },
+    { id: "한국사", label: "한국사" },
+    { id: "통합사회", label: "통합사회" },
+    { id: "통합과학", label: "통합과학" },
+  ];
 
   function esc(s) {
     var d = document.createElement("div");
@@ -1473,6 +1511,33 @@
     return found || lastMultiResult.sheets[0] || null;
   }
 
+  function sectionMatchesSubjectFilter(sec, subjectId) {
+    if (!subjectId || subjectId === "all") return true;
+    if (!isMeaningfulSection(sec)) return false;
+    var title = simplifySectionTitle(sec.title || "");
+    if (title === "선생님께 전하는 한마디") return false;
+    if (title === subjectId) return true;
+    if (title.indexOf(subjectId) >= 0) return true;
+    return false;
+  }
+
+  function renderSubjectTabsOnly() {
+    var html = '<div class="subject-tabs" role="tablist" aria-label="과목 필터">';
+    SUBJECT_FILTER_OPTIONS.forEach(function (opt) {
+      var active = activeSubjectView === opt.id ? " active" : "";
+      html +=
+        '<button type="button" class="subject-tab' +
+        active +
+        '" data-subject="' +
+        esc(opt.id) +
+        '" role="tab">' +
+        esc(opt.label) +
+        "</button>";
+    });
+    html += "</div>";
+    return html;
+  }
+
   function renderSheetTabs() {
     if (!lastMultiResult) return "";
     var html = '<div class="sheet-banner"><strong>' + esc(activeSheetView || "") + "</strong></div>";
@@ -1484,6 +1549,7 @@
       html += '<span class="count">' + esc(sheet.summary.총응답) + "건</span></button>";
     });
     html += "</div>";
+    html += renderSubjectTabsOnly();
     return html;
   }
 
@@ -1506,12 +1572,19 @@
     return html;
   }
 
-  function renderCategoryBlocks(row) {
+  function renderCategoryBlocks(row, subjectFilter) {
     var sections = row.sections || [];
-    if (!sections.length) return "";
+    var filtered = sections.filter(function (sec) {
+      return sectionMatchesSubjectFilter(sec, subjectFilter || "all");
+    });
+    if (!filtered.length) {
+      if (subjectFilter && subjectFilter !== "all") {
+        return '<p class="muted subject-empty">해당 과목 응답이 없습니다.</p>';
+      }
+      return "";
+    }
     var html = '<div class="category-blocks">';
-    sections.forEach(function (sec) {
-      if (!isMeaningfulSection(sec)) return;
+    filtered.forEach(function (sec) {
       html += '<div class="category-block">';
       html += '<div class="cat-title">' + esc(simplifySectionTitle(sec.title || "응답")) + "</div>";
       if (sec.body) {
@@ -1542,7 +1615,7 @@
     html += renderStudentResponseHeader(row);
     html += '<div class="student-response-body">';
     if (hasCategories && rowHasSections(row)) {
-      html += renderCategoryBlocks(row);
+      html += renderCategoryBlocks(row, activeSubjectView);
     } else if (hasCategories) {
       html += '<p class="muted">분류할 내용 없음</p>';
     } else {
@@ -1631,7 +1704,11 @@
     list.forEach(function (row) {
       html += renderStudentCard(row, hasCategories);
     });
-    if (data.participation && data.participation.missingCount > 0) {
+    if (
+      data.participation &&
+      data.participation.missingCount > 0 &&
+      (!activeSubjectView || activeSubjectView === "all")
+    ) {
       var missingList =
         data.participation.missingStudents && data.participation.missingStudents.length
           ? data.participation.missingStudents
@@ -1738,18 +1815,15 @@
     var html = "";
     if (multi) {
       html += renderSheetTabs();
+    } else {
+      html += renderSubjectTabsOnly();
     }
     if (!s.총응답 && !(data.participation && data.participation.missingCount)) {
       html += '<p class="student-cards-empty">이 탭에 분석할 데이터가 없습니다.</p>';
       el.innerHTML = html;
       el.classList.add("visible");
       teardownScrollStudentTracker();
-      el.querySelectorAll(".sheet-tab").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          activeSheetView = btn.getAttribute("data-sheet");
-          renderResults(getActiveAnalysis(), spreadsheetId, lastMultiResult);
-        });
-      });
+      bindSheetAndSubjectTabs(el, spreadsheetId);
       return;
     }
 
@@ -1758,14 +1832,24 @@
     el.innerHTML = html;
     el.classList.add("visible");
 
+    bindSheetAndSubjectTabs(el, spreadsheetId);
+    setupScrollStudentTracker();
+  }
+
+  function bindSheetAndSubjectTabs(el, spreadsheetId) {
     el.querySelectorAll(".sheet-tab").forEach(function (btn) {
       btn.addEventListener("click", function () {
         activeSheetView = btn.getAttribute("data-sheet");
+        activeSubjectView = "all";
         renderResults(getActiveAnalysis(), spreadsheetId, lastMultiResult);
       });
     });
-
-    setupScrollStudentTracker();
+    el.querySelectorAll(".subject-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        activeSubjectView = btn.getAttribute("data-subject") || "all";
+        renderResults(getActiveAnalysis(), spreadsheetId, lastMultiResult);
+      });
+    });
   }
 
   var form = document.getElementById("form");
@@ -1806,6 +1890,7 @@
       sheetsData[id] = sheetInputs;
       lastMultiResult = analyzeAllSheets(sheetInputs);
       activeSheetView = lastMultiResult.sheets[0] ? lastMultiResult.sheets[0].sheetName : null;
+      activeSubjectView = "all";
       renderResults(getActiveAnalysis(), id, lastMultiResult);
     } catch (err) {
       errorEl.textContent = err.message || "분석에 실패했습니다.";
