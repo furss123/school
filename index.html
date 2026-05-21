@@ -569,6 +569,23 @@
     return fields;
   }
 
+  /** 과목 블록 제목에서 과목명만 추출 (예: 국어, 수학, 통합과학) */
+  function simplifySectionTitle(title) {
+    if (!title) return "응답";
+    var t = String(title).trim();
+    if (/💌|선생님께/.test(t)) return "💌 선생님께 전하는 한마디";
+    var subjectMatch = t.match(/과목\s*\d+\s*\(([^)]+)\)/);
+    if (subjectMatch) return subjectMatch[1].trim();
+    var lastParen = t.match(/\(([^)]+)\)\s*$/);
+    if (lastParen) {
+      var name = lastParen[1].trim();
+      if (/^(국어|수학|영어|한국사|통합사회|통합과학|과학|사회|음악|체육|미술|역사|도덕|기술|정보)$/.test(name)) {
+        return name;
+      }
+    }
+    return t;
+  }
+
   function parseTeacherSection(chunk) {
     var headerMatch = chunk.match(/^(💌[^\n"]*)/);
     var title = headerMatch ? headerMatch[1].trim() : "💌 선생님께 전하는 한마디";
@@ -586,12 +603,7 @@
       var part = parts[i];
       var subjMatch = part.match(/^(과목\s*\d+\s*\([^)]+\))/);
       if (!subjMatch) continue;
-      var subjTitle = subjMatch[1].trim();
-      var title = parent ? parent.replace(/\s+$/, "") + " " + subjTitle : "📚 " + subjTitle;
-      if (/영역별/.test(part) && !parent) {
-        var areaMatch = part.match(/((?:📚\s*)?영역별\s*\([^)]+\)[^\n]*?(?:학습\s*설문[^:\n]*)?)/);
-        if (areaMatch) title = areaMatch[1].trim() + " " + subjTitle;
-      }
+      var title = simplifySectionTitle(subjMatch[1].trim());
       var bodyStart = part.slice(subjMatch[0].length).trim();
       sections.push({ title: title, body: "", fields: parseSectionFields(bodyStart) });
     }
@@ -621,7 +633,7 @@
         } else if (!SUBJECT_START_RE.test(chunk)) {
           var remainder = chunk.replace(surveyParent, "").trim();
           if (remainder && !isMarkerOnlyTitle(surveyParent)) {
-            sections.push({ title: surveyParent, body: remainder, fields: [] });
+            sections.push({ title: simplifySectionTitle(surveyParent), body: remainder, fields: [] });
           }
         }
         continue;
@@ -632,7 +644,11 @@
       }
       var firstLine = chunk.split(/\n/)[0].trim();
       if (firstLine) {
-        sections.push({ title: firstLine, body: chunk.slice(firstLine.length).trim(), fields: parseSectionFields(chunk) });
+        sections.push({
+          title: simplifySectionTitle(firstLine),
+          body: chunk.slice(firstLine.length).trim(),
+          fields: parseSectionFields(chunk),
+        });
       }
     }
     return sections.filter(isMeaningfulSection);
@@ -1022,7 +1038,7 @@
     sections.forEach(function (sec) {
       if (!isMeaningfulSection(sec)) return;
       html += '<div class="category-block">';
-      html += '<div class="cat-title">' + esc(sec.title || "응답") + "</div>";
+      html += '<div class="cat-title">' + esc(simplifySectionTitle(sec.title || "응답")) + "</div>";
       if (sec.body) {
         var body = sec.body.length > 400 ? sec.body.slice(0, 400).trim() + "…" : sec.body;
         html += '<div class="cat-body">' + esc(body) + "</div>";
