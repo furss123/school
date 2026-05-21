@@ -459,6 +459,22 @@
     return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  function isMarkerOnlyTitle(title) {
+    var t = String(title || "").trim();
+    if (!t) return true;
+    if (/^[\s💌📚📖📝✏️🎯⭐🔖•\-👤]+$/.test(t)) return true;
+    if (/^👤\s*\[\d+반\]/.test(t)) return true;
+    if (/학생\s*프로필\s*$/i.test(t) && t.length < 120) return true;
+    return false;
+  }
+
+  function isMeaningfulSection(sec) {
+    if (!sec) return false;
+    if (sec.body && String(sec.body).trim()) return true;
+    if (sec.fields && sec.fields.length) return true;
+    return !isMarkerOnlyTitle(sec.title);
+  }
+
   function hasProfileContent(text) {
     var s = String(text || "").trim();
     if (!s) return false;
@@ -557,7 +573,10 @@
         if (/과목\s*\d+\s*\(/.test(chunk)) {
           sections = sections.concat(parseSubjectSections(chunk, surveyParent));
         } else if (!SUBJECT_START_RE.test(chunk)) {
-          sections.push({ title: surveyParent, body: chunk.replace(surveyParent, "").trim(), fields: [] });
+          var remainder = chunk.replace(surveyParent, "").trim();
+          if (remainder && !isMarkerOnlyTitle(surveyParent)) {
+            sections.push({ title: surveyParent, body: remainder, fields: [] });
+          }
         }
         continue;
       }
@@ -570,9 +589,7 @@
         sections.push({ title: firstLine, body: chunk.slice(firstLine.length).trim(), fields: parseSectionFields(chunk) });
       }
     }
-    return sections.filter(function (s) {
-      return s.title || s.body || (s.fields && s.fields.length);
-    });
+    return sections.filter(isMeaningfulSection);
   }
 
   function parseProfileCategories(text, meta) {
@@ -951,6 +968,7 @@
     if (!sections.length) return "";
     var html = '<div class="category-blocks">';
     sections.forEach(function (sec) {
+      if (!isMeaningfulSection(sec)) return;
       html += '<div class="category-block">';
       html += '<div class="cat-title">' + esc(sec.title || "응답") + "</div>";
       if (sec.body) {
