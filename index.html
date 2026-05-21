@@ -71,54 +71,44 @@
     .meta code { font-size: 0.7rem; color: #475569; }
     #results { margin-top: 24px; display: none; }
     #results.visible { display: block; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    @media (min-width: 768px) { .grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (min-width: 1024px) { .grid { grid-template-columns: repeat(6, 1fr); } }
-    .stat {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .stat.highlight { border-color: #99f6e4; box-shadow: 0 0 0 1px #ccfbf1; }
-    .stat-label { font-size: 0.75rem; font-weight: 600; color: #64748b; }
-    .stat-value { margin-top: 4px; font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .stat.highlight .stat-value { color: #0f766e; }
-    .stat-suffix { font-size: 0.875rem; font-weight: 400; color: #94a3b8; }
-    section.block {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-    section.block h2 { margin: 0 0 4px; font-size: 0.875rem; font-weight: 600; }
-    section.block .hint { margin: 0 0 12px; font-size: 0.75rem; color: #64748b; }
-    .tags { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
-    .tags li {
-      padding: 4px 12px;
-      border-radius: 999px;
-      background: #f0fdfa;
-      color: #115e59;
-      font-size: 0.875rem;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid #f1f5f9; }
-    th { font-size: 0.75rem; color: #64748b; font-weight: 600; }
-    .col-list { list-style: none; padding: 0; margin: 0; }
-    .col-list li {
-      display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
-      padding: 8px 12px; margin-bottom: 6px; border-radius: 8px; background: #f8fafc;
-    }
-    .badge { font-size: 0.7rem; color: #0d9488; margin-left: 6px; }
-    .done { color: #0d9488; }
     .muted { color: #94a3b8; }
-    .preview { max-width: 28rem; color: #475569; word-break: break-word; }
+    .preview { color: #475569; word-break: break-word; line-height: 1.5; }
+    .student-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 8px;
+    }
+    .student-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+    }
+    @media (min-width: 640px) {
+      .student-card { padding: 18px 22px; }
+    }
+    .student-cards-empty {
+      padding: 24px 16px;
+      text-align: center;
+      font-size: 0.875rem;
+      color: #64748b;
+      background: #fff;
+      border: 1px dashed #cbd5e1;
+      border-radius: 12px;
+    }
+    .responses-heading {
+      margin: 0 0 4px;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .responses-hint {
+      margin: 0 0 12px;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
     .category-blocks { display: flex; flex-direction: column; gap: 10px; max-width: 42rem; }
     .category-block {
       padding: 10px 12px;
@@ -151,26 +141,44 @@
       color: #475569;
       margin-right: 4px;
     }
-    td.col-categories { vertical-align: top; max-width: 42rem; }
     .student-response-header {
       display: flex;
       flex-wrap: wrap;
-      align-items: baseline;
-      gap: 6px 10px;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px 12px;
+      margin: 0 0 14px;
+      padding-bottom: 12px;
       border-bottom: 1px solid #e2e8f0;
       font-weight: 600;
       line-height: 1.35;
     }
+    .student-response-header .header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px 10px;
+    }
     .student-response-header .student-class { color: #0f766e; font-size: 0.875rem; }
     .student-response-header .student-num { color: #475569; font-size: 0.8125rem; font-weight: 500; }
-    .student-response-header .student-name { color: #0f172a; font-size: 0.9375rem; }
-    th.col-response { min-width: 12rem; }
-    .common-themes .tags li span.type {
+    .student-response-header .student-name { color: #0f172a; font-size: 1rem; }
+    .status-badge {
+      flex-shrink: 0;
+      padding: 3px 10px;
+      border-radius: 999px;
       font-size: 0.7rem;
-      color: #64748b;
-      margin-left: 4px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .status-badge.done {
+      background: #ecfdf5;
+      color: #0f766e;
+      border: 1px solid #99f6e4;
+    }
+    .status-badge.pending {
+      background: #f8fafc;
+      color: #94a3b8;
+      border: 1px solid #e2e8f0;
     }
     .sheet-banner {
       margin-bottom: 16px;
@@ -955,10 +963,16 @@
     var numLabel = row.번호 != null ? String(row.번호) + "번" : "";
     var nameLabel = row.이름 || (row._raw && row._raw.이름) || "";
     if (!classLabel && !numLabel && !nameLabel) return "";
-    var html = '<div class="student-response-header">';
+    var html = '<div class="student-response-header"><div class="header-meta">';
     if (classLabel) html += '<span class="student-class">' + esc(classLabel) + "</span>";
     if (numLabel) html += '<span class="student-num">' + esc(numLabel) + "</span>";
     if (nameLabel) html += '<span class="student-name">' + esc(nameLabel) + "</span>";
+    html += "</div>";
+    if (row.완료) {
+      html += '<span class="status-badge done">완료</span>';
+    } else if (row.완료 === false) {
+      html += '<span class="status-badge pending">미완료</span>';
+    }
     html += "</div>";
     return html;
   }
@@ -986,39 +1000,45 @@
     return html;
   }
 
-  function renderStudentResponseCell(row, hasCategories) {
-    var html = '<td class="col-categories">';
+  function renderStudentCard(row, hasCategories) {
+    var html = '<article class="student-card">';
     html += renderStudentResponseHeader(row);
     if (hasCategories && rowHasSections(row)) {
       html += renderCategoryBlocks(row);
     } else if (hasCategories) {
-      html += '<span class="muted">분류할 내용 없음</span>';
+      html += '<p class="muted">분류할 내용 없음</p>';
     } else {
       html += '<div class="preview">' + esc(row.미리보기 || (row._raw && row._raw.미리보기) || "—") + "</div>";
     }
-    html += "</td>";
+    html += "</article>";
+    return html;
+  }
+
+  function renderStudentCards(data) {
+    if (!data.rows || !data.rows.length) return "";
+    var isProfile = data.meta && data.meta.format === "profile";
+    var hasCategories = isProfile || data.rows.some(rowHasSections);
+    var list = data.rows.slice(0, 50);
+    var html = '<h2 class="responses-heading">학생 응답</h2>';
+    html += '<p class="responses-hint">' + esc(list.length) + "명 · 최대 50건 표시</p>";
+    html += '<div class="student-cards">';
+    list.forEach(function (row) {
+      html += renderStudentCard(row, hasCategories);
+    });
+    html += "</div>";
     return html;
   }
 
   function renderResults(data, spreadsheetId, multi) {
     var el = document.getElementById("results");
     var s = data.summary;
-    var cards = [
-      { label: "총 응답", value: s.총응답, suffix: "건" },
-      { label: "완료", value: s.완료건수, suffix: "건" },
-      { label: "완료율", value: s.완료율, suffix: "%", highlight: true },
-      { label: "학급 수", value: s.학급수, suffix: "개" },
-      { label: "이름 입력", value: s.이름입력, suffix: "건" },
-      { label: "반 미입력", value: s.반미입력, suffix: "건" },
-    ];
 
     var html = "";
     if (multi) {
       html += renderSheetTabs();
-      html += '<p class="hint" style="margin:0 0 16px;font-size:0.8125rem;color:#334155;">선택: <strong>' + esc(activeSheetView || "") + "</strong></p>";
     }
     if (!s.총응답) {
-      html += '<section class="block"><p class="muted">이 탭에 분석할 데이터가 없습니다.</p></section>';
+      html += '<p class="student-cards-empty">이 탭에 분석할 데이터가 없습니다.</p>';
       el.innerHTML = html;
       el.classList.add("visible");
       el.querySelectorAll(".sheet-tab").forEach(function (btn) {
@@ -1029,65 +1049,8 @@
       });
       return;
     }
-    html += '<div class="grid">';
-    cards.forEach(function (c) {
-      html += '<div class="stat' + (c.highlight ? ' highlight' : '') + '">';
-      html += '<p class="stat-label">' + esc(c.label) + '</p>';
-      html += '<p class="stat-value">' + esc(c.value) + '<span class="stat-suffix">' + esc(c.suffix) + '</span></p></div>';
-    });
-    html += "</div>";
 
-    if (data.commonThemes && data.commonThemes.length) {
-      html += '<section class="block common-themes"><h2>공통 주제</h2><p class="hint">현재 시트 학생 프로필에서 자주 나타난 분류·키워드입니다.</p><ul class="tags">';
-      data.commonThemes.forEach(function (t) {
-        var typeLabel = t.유형 === "category" ? "분류" : "키워드";
-        html += "<li>" + esc(t.주제) + ' <span>(' + esc(t.언급수) + ')</span><span class="type">· ' + esc(typeLabel) + "</span></li>";
-      });
-      html += "</ul></section>";
-    }
-
-    if (data.themes && data.themes.length && !(data.meta && data.meta.format === "profile")) {
-      html += '<section class="block"><h2>주요 상담 주제</h2><p class="hint">응답 텍스트에서 자주 언급된 키워드입니다.</p><ul class="tags">';
-      data.themes.forEach(function (t) {
-        html += "<li>" + esc(t.주제) + " <span>(" + esc(t.언급수) + ")</span></li>";
-      });
-      html += "</ul></section>";
-    }
-
-    if (data.byClass && data.byClass.length) {
-      html += '<section class="block"><h2>반별 현황</h2><table><thead><tr><th>반</th><th>인원</th><th>완료</th><th>완료율</th></tr></thead><tbody>';
-      data.byClass.forEach(function (row) {
-        html += "<tr><td>" + esc(row.반) + "</td><td>" + esc(row.인원) + "</td><td>" + esc(row.완료) + "</td><td>" + esc(row.완료율) + "%</td></tr>";
-      });
-      html += "</tbody></table></section>";
-    }
-
-    if (data.columnInsights && data.columnInsights.length) {
-      html += '<section class="block"><h2>열(컬럼) 입력 현황</h2><ul class="col-list">';
-      data.columnInsights.forEach(function (col) {
-        html += "<li><span>" + esc(col.열);
-        if (col.상담내용열) html += '<span class="badge">상담 내용</span>';
-        html += "</span><span>" + esc(col.입력건수) + "건 (" + esc(col.입력률) + "%)</span></li>";
-      });
-      html += "</ul></section>";
-    }
-
-    if (data.rows && data.rows.length) {
-      var isProfile = data.meta && data.meta.format === "profile";
-      var hasCategories = isProfile || data.rows.some(rowHasSections);
-      var fmt = hasCategories ? "학생 프로필 (카테고리별)" : "표";
-      html += '<section class="block"><h2>응답 목록</h2><p class="hint">형식: ' + esc(fmt) + ' · 최대 50건</p>';
-      html += "<table><thead><tr><th>완료</th>";
-      html += '<th class="col-response">' + (hasCategories ? "카테고리별 응답" : "응답") + "</th></tr></thead><tbody>";
-      data.rows.slice(0, 50).forEach(function (row) {
-        html += "<tr>";
-        html += "<td>" + (row.완료 ? '<span class="done">완료</span>' : '<span class="muted">—</span>') + "</td>";
-        html += renderStudentResponseCell(row, hasCategories);
-        html += "</tr>";
-      });
-      html += "</tbody></table>";
-      html += "</section>";
-    }
+    html += renderStudentCards(data);
 
     el.innerHTML = html;
     el.classList.add("visible");
