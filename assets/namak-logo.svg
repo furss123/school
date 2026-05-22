@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="¨EàñYP">
+  <defs>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#0f766e"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="#ffffff" stroke="url(#ring)" stroke-width="3"/>
+  <circle cx="32" cy="32" r="22" fill="#ecfdf5" stroke="#99f6e4" stroke-width="1.5"/>
+  <path fill="#0d9488" d="M32 18c-2.5 0-4.5 2.8-4.5 6.2 0 2.2 1 4.1 2.5 5.1-.8 1.2-1.3 2.6-1.3 4.1 0 4.2 3.2 7.6 7.3 7.6s7.3-3.4 7.3-7.6c0-1.5-.5-2.9-1.3-4.1 1.5-1 2.5-2.9 2.5-5.1C36.5 20.8 34.5 18 32 18z"/>
+  <path fill="#14b8a6" d="M32 36.8c-2.8 0-5.1 1.6-5.1 3.6v1.1h10.2v-1.1c0-2-2.3-3.6-5.1-3.6z"/>
+  <text x="32" y="52" text-anchor="middle" font-family="'Malgun Gothic', sans-serif" font-size="7" font-weight="700" fill="#115e59">¨Eà</text>
+</svg>
