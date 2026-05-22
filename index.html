@@ -2650,7 +2650,6 @@
     el.querySelectorAll(".sheet-tab").forEach(function (btn) {
       btn.addEventListener("click", function () {
         activeSheetView = btn.getAttribute("data-sheet");
-        activeSubjectView = null;
         renderResults(getActiveAnalysis(), spreadsheetId, lastMultiResult);
       });
     });
