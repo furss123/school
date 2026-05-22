@@ -40,7 +40,7 @@ JSON 키 파일은 `server/service-account.json`에 두면 됩니다 (`.gitignor
 ## 설치 및 실행
 
 ```bash
-cd c:\Users\KIM\school\namak2026
+cd c:\Users\KIM\Documents\GitHub\forms\namak2026
 npm run install:all
 npm run dev
 ```
