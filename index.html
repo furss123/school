@@ -1973,7 +1973,7 @@
           esc(item.id) +
           '">' +
           esc(item.label) +
-          " 조회</button>"
+          "</button>"
         );
       })
       .join("");
@@ -1994,7 +1994,7 @@
         return (
           "<li><div class=\"registry-meta\"><strong>" +
           esc(item.label) +
-          " 조회</strong><span>" +
+          "</strong><span>" +
           esc(item.url) +
           (item.tab ? " · 탭: " + esc(item.tab) : "") +
           "</span></div><button type=\"button\" class=\"admin-btn admin-btn-danger\" data-delete-id=\"" +
@@ -2084,7 +2084,7 @@
     } finally {
       analysisInFlight = false;
       setSheetButtonsDisabled(false);
-      if (triggerBtn) triggerBtn.textContent = prevLabel || entry.label + " 조회";
+      if (triggerBtn) triggerBtn.textContent = prevLabel || entry.label;
     }
   }
   var activeSheetView = null;
@@ -2467,7 +2467,7 @@
       html += renderSubjectTabsOnly();
     }
     if (!analysis) {
-      html += '<p class="student-cards-empty">반을 선택해 주세요.</p>';
+      html += '<p class="student-cards-empty">선생님! 항목을 선택해 주세요!</p>';
       el.innerHTML = html;
       el.classList.add("visible");
       teardownScrollStudentTracker();
