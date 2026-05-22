@@ -5,7 +5,7 @@ alwaysApply: true
 
 # 자동 커밋·푸시
 
-이 저장소(`forms` / GitHub Pages)에서 코드·설정을 수정한 뒤 작업을 마치면:
+설문(`survey`)·성적(`namak-grade-system`) 저장소에서 코드·설정을 수정한 뒤 작업을 마치면:
 
 1. `git status`로 변경 파일 확인
 2. 의미 있는 단위로 `git add` 후 **커밋** (메시지는 변경 목적을 한국어 또는 영어로 간결히)
