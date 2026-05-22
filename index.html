@@ -1654,8 +1654,11 @@
     }
     var html = '<div class="category-blocks">';
     filtered.forEach(function (sec) {
-      html += '<div class="category-block">';
-      html += '<div class="cat-title">' + esc(simplifySectionTitle(sec.title || "응답")) + "</div>";
+      var isTeacher = isTeacherMessageSection(sec);
+      html += '<div class="category-block' + (isTeacher ? " category-block--teacher" : "") + '">';
+      if (!isTeacher) {
+        html += '<div class="cat-title">' + esc(simplifySectionTitle(sec.title || "응답")) + "</div>";
+      }
       if (sec.body) {
         var body = sec.body.length > 400 ? sec.body.slice(0, 400).trim() + "…" : sec.body;
         html += '<div class="cat-body">' + esc(body) + "</div>";
