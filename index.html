@@ -680,6 +680,7 @@
   "use strict";
 
   const SPREADSHEET_ID_PATTERN = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
+  const CLASS_ROSTER_SPREADSHEET_ID = "1GHbpOBkx2dLZvhiBzBIgpBgN5OBB80G-mQFcrfdpFXQ";
   const PROFILE_PATTERN = /\[(\d+)반\]\s*\[(\d+)\]\s*\[([^\]]+)\]/;
 
   const CLASS_ALIASES = ["반", "class", "학급", "클래스", "반명"];
@@ -1431,8 +1432,73 @@
     return t.toLowerCase().replace(/\s+/g, "");
   }
 
+  function isMatrixClassRoster(rawValues) {
+    if (!rawValues || !rawValues.length) return false;
+    var headerRow = rawValues[0].map(coerceText);
+    var classCols = 0;
+    headerRow.forEach(function (h) {
+      if (/^\d+\s*반$/.test(String(h || "").trim())) classCols += 1;
+    });
+    return classCols >= 2;
+  }
+
+  function parseMatrixClassRoster(rawValues) {
+    if (!rawValues || !rawValues.length) return [];
+    var headerRow = rawValues[0].map(coerceText);
+    var dataRows = rawValues.slice(1).filter(function (row) {
+      return row && row.some(function (cell) { return coerceText(cell) !== ""; });
+    });
+    var numberIdx = findColumnIndexExact(headerRow, NUMBER_ALIASES);
+    if (numberIdx < 0) numberIdx = findColumnIndex(headerRow, NUMBER_ALIASES);
+    if (numberIdx < 0) numberIdx = 0;
+
+    var classColumns = [];
+    headerRow.forEach(function (h, idx) {
+      if (idx === numberIdx) return;
+      var m = String(h || "").trim().match(/^(\d+)\s*반$/);
+      if (m) classColumns.push({ idx: idx, 반: m[1] + "반" });
+    });
+    if (!classColumns.length) return [];
+
+    var roster = [];
+    dataRows.forEach(function (raw, rowIndex) {
+      var numberVal = numberIdx >= 0 ? coerceNumber(raw[numberIdx]) : null;
+      if (numberVal == null) numberVal = rowIndex + 1;
+      classColumns.forEach(function (col) {
+        var nameVal = coerceText(raw[col.idx]);
+        if (!nameVal) return;
+        roster.push({ 반: col.반, 번호: numberVal, 이름: nameVal });
+      });
+    });
+    roster.sort(function (a, b) {
+      var classCmp = String(a.반).localeCompare(String(b.반), "ko");
+      if (classCmp !== 0) return classCmp;
+      return (a.번호 || 0) - (b.번호 || 0);
+    });
+    return roster;
+  }
+
+  async function fetchClassRosterFromMaster() {
+    var probeTitles = ["1반", "명단", "list"];
+    for (var i = 0; i < probeTitles.length; i++) {
+      try {
+        var values = await fetchSheetValuesGviz(CLASS_ROSTER_SPREADSHEET_ID, { title: probeTitles[i] });
+        if (isMatrixClassRoster(values)) return parseMatrixClassRoster(values);
+      } catch (err) { /* try next tab */ }
+    }
+    try {
+      var tabs = await fetchSpreadsheetTabs(CLASS_ROSTER_SPREADSHEET_ID);
+      if (tabs.length) {
+        var values = await fetchSheetValuesGviz(CLASS_ROSTER_SPREADSHEET_ID, tabs[0]);
+        if (isMatrixClassRoster(values)) return parseMatrixClassRoster(values);
+      }
+    } catch (err) { /* master roster unavailable */ }
+    return [];
+  }
+
   function parseListRoster(rawValues) {
     if (!rawValues || !rawValues.length) return [];
+    if (isMatrixClassRoster(rawValues)) return parseMatrixClassRoster(rawValues);
     var headerRow = rawValues[0].map(coerceText);
     var dataRows = rawValues.slice(1).filter(function (row) {
       return row && row.some(function (cell) { return coerceText(cell) !== ""; });
@@ -1543,14 +1609,25 @@
     };
   }
 
-  function analyzeAllSheets(sheetInputs) {
+  function analyzeAllSheets(sheetInputs, externalRoster) {
     var listInput = null;
     var responseInputs = [];
     (sheetInputs || []).forEach(function (item) {
       if (isListSheetTab(item.sheetName)) listInput = item;
       else responseInputs.push(item);
     });
-    var fullRoster = listInput ? parseListRoster(listInput.values) : [];
+    var fullRoster =
+      externalRoster && externalRoster.length
+        ? externalRoster
+        : listInput
+          ? parseListRoster(listInput.values)
+          : [];
+    var rosterSource =
+      externalRoster && externalRoster.length
+        ? "master-roster"
+        : listInput
+          ? "list"
+          : "responses";
 
     var sheetAnalyses = responseInputs.map(function (item) {
       var analysis = analyzeSheetData(item.values);
@@ -1561,10 +1638,15 @@
     var partMeta = fullRoster.length
       ? {
           maxExpected: fullRoster.length,
-          referenceSheetName: listInput.sheetName,
-          rosterSource: "list",
+          referenceSheetName:
+            rosterSource === "master-roster"
+              ? "명렬표"
+              : listInput
+                ? listInput.sheetName
+                : "",
+          rosterSource: rosterSource,
           roster: fullRoster,
-          listTabName: listInput.sheetName,
+          listTabName: listInput ? listInput.sheetName : null,
         }
       : computeParticipationMeta(sheetAnalyses);
 
@@ -1583,7 +1665,7 @@
           sheet.rows,
           fullRoster,
           partMeta.referenceSheetName,
-          "list",
+          rosterSource,
           sheet.sheetName
         );
       } else {
@@ -2043,10 +2125,11 @@
     try {
       var id = parseSpreadsheetId(sheetUrl.value);
       var sheetInputs = await fetchAllSheetsGviz(id);
+      var masterRoster = await fetchClassRosterFromMaster();
       var hasData = sheetInputs.some(function (s) { return s.values && s.values.length; });
       if (!hasData) throw new Error("시트에 데이터가 없습니다. 공개 공유 설정을 확인하세요.");
       sheetsData[id] = sheetInputs;
-      lastMultiResult = analyzeAllSheets(sheetInputs);
+      lastMultiResult = analyzeAllSheets(sheetInputs, masterRoster);
       activeSheetView = lastMultiResult.sheets[0] ? lastMultiResult.sheets[0].sheetName : null;
       activeSubjectView = "all";
       renderResults(getActiveAnalysis(), id, lastMultiResult);
