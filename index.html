@@ -42,29 +42,34 @@
       width: 100%;
       max-width: 100%;
     }
-    .home-lead {
-      margin: 0 0 16px;
-      font-size: 0.9375rem;
-      color: #475569;
-    }
     .sheet-btn-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+      width: 100%;
     }
     @media (min-width: 520px) {
       .sheet-btn-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
     .sheet-launch-btn {
-      padding: 14px 10px;
+      width: 100%;
+      min-width: 0;
+      padding: 14px 12px;
       border: 1px solid #99f6e4;
       border-radius: 10px;
       background: #f0fdfa;
       color: #0f766e;
       font-size: 0.9375rem;
       font-weight: 700;
+      line-height: 1.45;
+      text-align: center;
+      word-break: keep-all;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      box-sizing: border-box;
+    }
+    .sheet-launch-btn--full {
+      grid-column: 1 / -1;
     }
     .sheet-launch-btn:hover:not(:disabled) {
       background: #ccfbf1;
@@ -187,11 +192,6 @@
       margin-top: 2px;
       color: #64748b;
       word-break: break-all;
-    }
-    .admin-hint {
-      margin: 8px 0 0;
-      font-size: 0.75rem;
-      color: #94a3b8;
     }
     .admin-login-box {
       margin-top: 12px;
@@ -725,7 +725,6 @@
       <div class="home-toolbar">
         <button type="button" class="admin-entry-btn" id="adminEntryBtn">관리자</button>
       </div>
-      <p class="home-lead">반을 선택하면 상담·응답 결과를 바로 불러옵니다.</p>
       <div id="sheetButtonGrid" class="sheet-btn-grid" role="group" aria-label="시트 조회"></div>
       <p id="error" class="error" hidden></p>
 
@@ -737,7 +736,6 @@
           <button type="button" class="admin-btn admin-btn-primary" id="adminLoginBtn">로그인</button>
           <button type="button" class="admin-btn" id="adminLoginCancelBtn">취소</button>
         </div>
-        <p class="admin-hint">최초 비밀번호: <code>school-admin</code> (로그인 후 변경 가능)</p>
       </div>
 
       <div id="adminPanel" hidden>
@@ -1914,6 +1912,10 @@
     else sessionStorage.removeItem(ADMIN_SESSION_KEY);
   }
 
+  function isFullWidthSheetLabel(label) {
+    return String(label || "").trim().length > 6;
+  }
+
   function resolvePreferredSheetTab(sheets, preferredTab) {
     if (!sheets || !sheets.length) return null;
     if (!preferredTab) return sheets[0].sheetName;
@@ -1931,7 +1933,9 @@
     grid.innerHTML = registry
       .map(function (item) {
         return (
-          '<button type="button" class="sheet-launch-btn" data-entry-id="' +
+          '<button type="button" class="sheet-launch-btn' +
+          (isFullWidthSheetLabel(item.label) ? " sheet-launch-btn--full" : "") +
+          '" data-entry-id="' +
           esc(item.id) +
           '">' +
           esc(item.label) +
