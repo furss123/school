@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>2026 남악고등학교 1학년 설문 결과</title>
-  <!-- ui-version: 20260522-sheet-buttons-admin -->
+  <!-- ui-version: 20260522-admin-password-gate -->
   <style>
     * { box-sizing: border-box; }
     :root {
@@ -185,47 +185,50 @@
       width: 100%;
       max-width: 100%;
     }
-    .sheet-btn-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+    #sheetButtonGrid { display: none !important; }
+    .home-admin-gate {
       width: 100%;
+      padding: 20px 16px;
+      border-radius: 12px;
+      background: var(--bg-muted);
+      border: 1px solid var(--border);
     }
-    @media (min-width: 520px) {
-      .sheet-btn-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-    }
-    .sheet-launch-btn {
-      width: 100%;
-      min-width: 0;
-      padding: 14px 12px;
-      border: 1px solid var(--border-accent);
-      border-radius: 10px;
-      background: var(--bg-accent-soft);
-      color: var(--accent-hover);
-      font-size: 0.9375rem;
-      font-weight: 700;
-      line-height: 1.45;
+    .home-admin-gate[hidden] { display: none !important; }
+    .home-admin-gate .admin-panel-title {
+      margin: 0 0 14px;
       text-align: center;
-      word-break: keep-all;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .home-admin-gate label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-subtle);
+    }
+    .home-admin-gate input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      background: var(--bg-surface);
+      color: var(--text);
+      font-size: 1rem;
       box-sizing: border-box;
     }
-    .sheet-launch-btn--full {
-      grid-column: 1 / -1;
-    }
-    .sheet-launch-btn:hover:not(:disabled) {
+    .home-admin-gate input:focus {
+      outline: none;
       border-color: var(--accent);
-      box-shadow: var(--shadow-md);
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
     }
-    .sheet-launch-btn:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
+    .home-admin-gate .admin-actions {
+      margin-top: 14px;
+      justify-content: center;
     }
-    .sheet-launch-btn.is-loading {
-      background: var(--bg-muted);
-      border-color: var(--border-strong);
+    .home-admin-hint {
+      margin: 10px 0 0;
+      font-size: 0.75rem;
       color: var(--text-muted);
+      text-align: center;
     }
     .home-toolbar {
       display: flex;
@@ -912,18 +915,19 @@
       <div class="home-toolbar">
         <button type="button" class="admin-entry-btn" id="adminEntryBtn">관리자</button>
       </div>
-      <div id="sheetButtonGrid" class="sheet-btn-grid" role="group" aria-label="시트 조회"></div>
-      <p id="error" class="error" hidden></p>
+      <div id="sheetButtonGrid" class="sheet-btn-grid" hidden aria-hidden="true"></div>
 
-      <div id="adminLoginBox" class="admin-login-box" hidden>
-        <p class="admin-panel-title">관리자 로그인</p>
-        <label for="adminPasswordInput">비밀번호</label>
-        <input type="password" id="adminPasswordInput" autocomplete="current-password" />
+      <div id="homeAdminGate" class="home-admin-gate">
+        <p class="admin-panel-title">관리자 비밀번호</p>
+        <label for="homeAdminPasswordInput">비밀번호를 입력하세요</label>
+        <input type="password" id="homeAdminPasswordInput" autocomplete="current-password" placeholder="관리자 비밀번호" />
         <div class="admin-actions">
-          <button type="button" class="admin-btn admin-btn-primary" id="adminLoginBtn">로그인</button>
-          <button type="button" class="admin-btn" id="adminLoginCancelBtn">취소</button>
+          <button type="button" class="admin-btn admin-btn-primary" id="homeAdminLoginBtn">확인</button>
         </div>
+        <p class="home-admin-hint">로그인 후 시트 등록·조회가 가능합니다.</p>
       </div>
+
+      <p id="error" class="error" hidden></p>
 
       <div id="adminPanel" hidden>
         <p class="admin-panel-title">시트 등록 (관리자)</p>
@@ -2053,11 +2057,13 @@
   var analysisInFlight = false;
 
   function getDefaultSheetRegistry() {
-    var baseUrl =
-      "https://docs.google.com/spreadsheets/d/" + DEFAULT_RESPONSE_SHEET_ID + "/edit?usp=sharing";
-    return [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) {
-      var label = n + "반";
-      return { id: "class-" + n, label: label, url: baseUrl, tab: label };
+    return [];
+  }
+
+  function stripDefaultClassButtons(registry) {
+    if (!Array.isArray(registry)) return [];
+    return registry.filter(function (item) {
+      return !/^class-[1-8]$/.test(String(item && item.id || ""));
     });
   }
 
@@ -2066,7 +2072,11 @@
       var raw = localStorage.getItem(SHEET_REGISTRY_KEY);
       if (raw) {
         var parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
+        if (Array.isArray(parsed)) {
+          var cleaned = stripDefaultClassButtons(parsed);
+          if (cleaned.length !== parsed.length) saveSheetRegistry(cleaned);
+          return cleaned;
+        }
       }
     } catch (err) { /* ignore */ }
     return getDefaultSheetRegistry();
@@ -2115,27 +2125,7 @@
 
   function renderSheetButtonGrid() {
     var grid = document.getElementById("sheetButtonGrid");
-    if (!grid) return;
-    var registry = loadSheetRegistry();
-    grid.innerHTML = registry
-      .map(function (item) {
-        return (
-          '<button type="button" class="sheet-launch-btn' +
-          (isFullWidthSheetLabel(item.label) ? " sheet-launch-btn--full" : "") +
-          '" data-entry-id="' +
-          esc(item.id) +
-          '">' +
-          esc(item.label) +
-          "</button>"
-        );
-      })
-      .join("");
-    grid.querySelectorAll(".sheet-launch-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var entry = findRegistryEntry(btn.getAttribute("data-entry-id"));
-        if (entry) launchSheetAnalysis(entry, btn);
-      });
-    });
+    if (grid) grid.innerHTML = "";
   }
 
   function renderAdminRegistryList() {
@@ -2150,22 +2140,26 @@
           "</strong><span>" +
           esc(item.url) +
           (item.tab ? " · 탭: " + esc(item.tab) : "") +
-          "</span></div><button type=\"button\" class=\"admin-btn admin-btn-danger\" data-delete-id=\"" +
+          "</span></div><div class=\"admin-actions\" style=\"margin:0;flex-shrink:0;\"><button type=\"button\" class=\"admin-btn admin-btn-primary\" data-open-id=\"" +
           esc(item.id) +
-          "\">삭제</button></li>"
+          "\">조회</button><button type=\"button\" class=\"admin-btn admin-btn-danger\" data-delete-id=\"" +
+          esc(item.id) +
+          "\">삭제</button></div></li>"
         );
       })
       .join("");
+    listEl.querySelectorAll("[data-open-id]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var entry = findRegistryEntry(btn.getAttribute("data-open-id"));
+        if (entry) launchSheetAnalysis(entry, btn);
+      });
+    });
     listEl.querySelectorAll("[data-delete-id]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var id = btn.getAttribute("data-delete-id");
         var next = loadSheetRegistry().filter(function (item) {
           return item.id !== id;
         });
-        if (!next.length) {
-          alert("최소 1개의 시트 버튼이 필요합니다.");
-          return;
-        }
         saveSheetRegistry(next);
         renderSheetButtonGrid();
         renderAdminRegistryList();
@@ -2176,22 +2170,30 @@
   function updateAdminUi() {
     var loggedIn = isAdminSession();
     var panel = document.getElementById("adminPanel");
-    var loginBox = document.getElementById("adminLoginBox");
+    var gate = document.getElementById("homeAdminGate");
     if (panel) panel.hidden = !loggedIn;
-    if (loginBox) loginBox.hidden = true;
+    if (gate) gate.hidden = loggedIn;
     if (loggedIn) renderAdminRegistryList();
   }
 
   function showAdminLogin() {
-    var loginBox = document.getElementById("adminLoginBox");
-    if (loginBox) {
-      loginBox.hidden = false;
-      var input = document.getElementById("adminPasswordInput");
-      if (input) {
-        input.value = "";
-        input.focus();
-      }
+    var input = document.getElementById("homeAdminPasswordInput");
+    if (input) {
+      input.value = "";
+      input.focus();
     }
+    var gate = document.getElementById("homeAdminGate");
+    if (gate) gate.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function tryAdminLogin(password) {
+    if (password !== getAdminPassword()) {
+      alert("비밀번호가 올바르지 않습니다.");
+      return false;
+    }
+    setAdminSession(true);
+    updateAdminUi();
+    return true;
   }
 
   function setSheetButtonsDisabled(disabled) {
@@ -2705,25 +2707,22 @@
     showAdminLogin();
   });
 
-  document.getElementById("adminLoginBtn").addEventListener("click", function () {
-    var input = document.getElementById("adminPasswordInput");
-    var value = input ? input.value : "";
-    if (value !== getAdminPassword()) {
-      alert("비밀번호가 올바르지 않습니다.");
-      return;
-    }
-    setAdminSession(true);
-    updateAdminUi();
+  document.getElementById("homeAdminLoginBtn").addEventListener("click", function () {
+    var input = document.getElementById("homeAdminPasswordInput");
+    tryAdminLogin(input ? input.value : "");
   });
 
-  document.getElementById("adminLoginCancelBtn").addEventListener("click", function () {
-    var loginBox = document.getElementById("adminLoginBox");
-    if (loginBox) loginBox.hidden = true;
+  document.getElementById("homeAdminPasswordInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      tryAdminLogin(e.target.value);
+    }
   });
 
   document.getElementById("adminLogoutBtn").addEventListener("click", function () {
     setAdminSession(false);
     updateAdminUi();
+    showAdminLogin();
   });
 
   document.getElementById("adminSheetForm").addEventListener("submit", function (e) {
