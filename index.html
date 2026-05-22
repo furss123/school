@@ -2307,6 +2307,7 @@
     if (activeSheetView) {
       html += '<div class="sheet-banner"><strong>' + esc(activeSheetView) + "</strong></div>";
     }
+    html += renderSubjectTabsOnly();
     html += '<div class="sheet-tabs" role="tablist">';
     lastMultiResult.sheets.forEach(function (sheet) {
       var active = activeSheetView === sheet.sheetName ? " active" : "";
@@ -2315,7 +2316,6 @@
       html += '<span class="count">' + esc(sheet.summary.총응답) + "건</span></button>";
     });
     html += "</div>";
-    html += renderSubjectTabsOnly();
     return html;
   }
 
