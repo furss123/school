@@ -3,7 +3,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>남악고 1학년 성적 조회 및 분석 보고서</title>
+    <title>남악고 1학년 성적 조회 (9등급제)</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <style>
         @page { size: A4; margin: 0; }
@@ -181,7 +181,8 @@
 <body>
 
     <div class="search-container no-print">
-        <h2 style="margin-top:0; color:#3b82f6; font-size: 22px;">학생 성적 조회 시스템 (2026 고교학점제 반영)</h2>
+        <h2 style="margin-top:0; color:#3b82f6; font-size: 22px;">학생 성적 조회 시스템 (9등급제 · 2026 고교학점제)</h2>
+        <p style="margin:0 0 16px;font-size:13px;color:#64748b;"><a href="index.html" style="color:#2563eb;font-weight:600;">← 상담 분석</a>으로 이동</p>
 
         <div id="demoBanner" class="demo-banner">
             <strong>예시 데이터</strong> — 처음 열면 1학년 1~10반 가상 학생(반당 25명)이 자동 적용됩니다.
@@ -496,7 +497,37 @@ function getSubjects(student) {
     });
 }
 
-// [핵심 엔진] 2026 고교학점제 성적 처리 규정(동석차, 중간석차, 경계 판정)을 완벽 구현하는 함수
+// 9등급제 누적 비율 (상위 4% ~ 하위 4%)
+const GRADE9_CUMULATIVE = [0.04, 0.11, 0.23, 0.40, 0.60, 0.77, 0.89, 0.96];
+const GRADE9_PERCENT_MAX = [4, 11, 23, 40, 60, 77, 89, 96];
+
+function getGrade9CutLimits(totalStudents) {
+    return GRADE9_CUMULATIVE.map(function (p) {
+        return Math.round(totalStudents * p);
+    });
+}
+
+function assignGrade9(highestRank, lowestRank, intermediateRankPercent, cutLimits) {
+    if (lowestRank <= cutLimits[0]) return 1;
+    for (var g = 2; g <= 8; g++) {
+        if (highestRank > cutLimits[g - 2] && lowestRank <= cutLimits[g - 1]) return g;
+    }
+    if (highestRank > cutLimits[7]) return 9;
+    for (var i = 0; i < GRADE9_PERCENT_MAX.length; i++) {
+        if (intermediateRankPercent <= GRADE9_PERCENT_MAX[i]) return i + 1;
+    }
+    return 9;
+}
+
+function highlightGradeOnGraph(clonePage, gradeNum) {
+    var graph = clonePage.querySelector(".grade-graph-container");
+    if (!graph || !gradeNum) return;
+    graph.querySelectorAll(".g-bar").forEach(function (bar) {
+        bar.classList.toggle("is-mine", bar.getAttribute("data-grade") === String(gradeNum));
+    });
+}
+
+// [핵심 엔진] 2026 고교학점제 9등급 성적 처리 (동석차, 중간석차, 경계 판정)
 function processAllGrades() {
     processedGradesCache = {};
     subjectStatsCache = {};
@@ -504,12 +535,7 @@ function processAllGrades() {
     if (studentData.length === 0) return;
     const subjects = getSubjects(studentData[0]);
     const totalStudents = studentData.length;
-
-    // 등급 누적인원 기준 (소수 첫째 자리에서 반올림 적용)
-    const cut1Limit = Math.round(totalStudents * 0.10);
-    const cut2Limit = Math.round(totalStudents * 0.34);
-    const cut3Limit = Math.round(totalStudents * 0.66);
-    const cut4Limit = Math.round(totalStudents * 0.90);
+    const cutLimits = getGrade9CutLimits(totalStudents);
 
     subjects.forEach(subject => {
         // 1. 점수를 소수 둘째 자리까지 정확히 반올림 (셋째 자리에서 반올림 처리)
@@ -538,27 +564,7 @@ function processAllGrades() {
             let intermediateRank = highestRank + (tieCount - 1) / 2;
             let intermediateRankPercent = (intermediateRank / totalStudents) * 100;
 
-            let grade = 5;
-
-            // 판정 STEP 2: 동점자 집단 전체가 하나의 등급 범위 안에 완전히 포함되는지 확인
-            if (lowestRank <= cut1Limit) {
-                grade = 1;
-            } else if (highestRank > cut1Limit && lowestRank <= cut2Limit) {
-                grade = 2;
-            } else if (highestRank > cut2Limit && lowestRank <= cut3Limit) {
-                grade = 3;
-            } else if (highestRank > cut3Limit && lowestRank <= cut4Limit) {
-                grade = 4;
-            } else if (highestRank > cut4Limit) {
-                grade = 5;
-            } else {
-                // 판정 STEP 3 & 4: 등급 경계를 넘어갈 경우만 중간석차백분율로 판정 (동점자 전원 동일 등급 보장)
-                if (intermediateRankPercent <= 10) grade = 1;
-                else if (intermediateRankPercent <= 34) grade = 2;
-                else if (intermediateRankPercent <= 66) grade = 3;
-                else if (intermediateRankPercent <= 90) grade = 4;
-                else grade = 5;
-            }
+            let grade = assignGrade9(highestRank, lowestRank, intermediateRankPercent, cutLimits);
 
             // 동석차 표기 문자열 생성
             let rankStr = tieCount > 1 ? `${highestRank}(${tieCount})` : `${highestRank}`;
@@ -588,20 +594,19 @@ function processAllGrades() {
         let max = Math.max(...allScoresOnly).toFixed(1);
         let min = Math.min(...allScoresOnly).toFixed(1);
 
-        // 각 등급별로 부여받은 인원들의 최저점 계산 (경계선 방어를 마친 실질적 커트라인)
-        let gradeScores = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+        // 각 등급별 최저점 (9등급 컷라인)
+        let gradeScores = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [] };
         rawScores.forEach(s => { gradeScores[processedGradesCache[s.id][subject].grade].push(s.score); });
         
-        let c1 = gradeScores[1].length > 0 ? Math.min(...gradeScores[1]).toFixed(1) : "-";
-        let c2 = gradeScores[2].length > 0 ? Math.min(...gradeScores[2]).toFixed(1) : "-";
-        let c3 = gradeScores[3].length > 0 ? Math.min(...gradeScores[3]).toFixed(1) : "-";
-        let c4 = gradeScores[4].length > 0 ? Math.min(...gradeScores[4]).toFixed(1) : "-";
+        let cuts = {};
+        for (let g = 1; g <= 8; g++) {
+            cuts["cut" + g] = gradeScores[g].length > 0 ? Math.min(...gradeScores[g]).toFixed(1) : "-";
+        }
 
-        subjectStatsCache[subject] = {
-            avg: avg, max: max, min: min, 
-            cut1: c1, cut2: c2, cut3: c3, cut4: c4,
-            allScoresSorted: allScoresOnly
-        };
+        subjectStatsCache[subject] = Object.assign(
+            { avg: avg, max: max, min: min, allScoresSorted: allScoresOnly },
+            cuts
+        );
     });
 }
 
@@ -623,10 +628,11 @@ function displayGeneralStats() {
     document.getElementById('statsRowAvg').innerHTML = '<td class="stats-label">평균 점수</td>';
     document.getElementById('statsRowMax').innerHTML = '<td class="stats-label">최상위 점수</td>';
     document.getElementById('statsRowMin').innerHTML = '<td class="stats-label">최하위 점수</td>';
-    document.getElementById('statsRowCut1').innerHTML = '<td class="stats-label">1컷 (10%) 최저</td>';
-    document.getElementById('statsRowCut2').innerHTML = '<td class="stats-label">2컷 (34%) 최저</td>';
-    document.getElementById('statsRowCut3').innerHTML = '<td class="stats-label">3컷 (66%) 최저</td>';
-    document.getElementById('statsRowCut4').innerHTML = '<td class="stats-label">4컷 (90%) 최저</td>';
+    var cutLabels = ["1등급(4%)", "2등급(11%)", "3등급(23%)", "4등급(40%)", "5등급(60%)", "6등급(77%)", "7등급(89%)", "8등급(96%)"];
+    for (var c = 1; c <= 8; c++) {
+        document.getElementById("statsRowCut" + c).innerHTML =
+            '<td class="stats-label">' + cutLabels[c - 1] + " 최저</td>";
+    }
 
     subjects.forEach(subject => {
         const th = document.createElement('th');
@@ -640,10 +646,9 @@ function displayGeneralStats() {
         appendStatsTd('statsRowAvg', stats.avg, 'highlight-blue');
         appendStatsTd('statsRowMax', stats.max, 'highlight-red');
         appendStatsTd('statsRowMin', stats.min);
-        appendStatsTd('statsRowCut1', stats.cut1);
-        appendStatsTd('statsRowCut2', stats.cut2);
-        appendStatsTd('statsRowCut3', stats.cut3);
-        appendStatsTd('statsRowCut4', stats.cut4);
+        for (var sc = 1; sc <= 8; sc++) {
+            appendStatsTd("statsRowCut" + sc, stats["cut" + sc]);
+        }
     });
 
     const dash = document.getElementById('statsDashboard');
@@ -772,21 +777,23 @@ function populateTemplate(studentIdStr, clonePage) {
         totalWeight += unit; 
         weightedGradeSum += (pData.grade * unit);
 
-        // 상위/하위 등급 차이 및 목표치 계산
+        // 상위/하위 등급 차이 및 목표치 계산 (9등급)
         let diffUp = '-', diffDown = '-', goalValue = '-';
         if (pData.grade === 1) {
             diffDown = stats.cut1 !== "-" ? (pData.score - Number(stats.cut1)).toFixed(1) : '-';
-        } else {
-            let upperCut = 0;
-            if (pData.grade === 2) { upperCut = Number(stats.cut1); diffDown = stats.cut2 !== "-" ? (pData.score - Number(stats.cut2)).toFixed(1) : '-'; }
-            else if (pData.grade === 3) { upperCut = Number(stats.cut2); diffDown = stats.cut3 !== "-" ? (pData.score - Number(stats.cut3)).toFixed(1) : '-'; }
-            else if (pData.grade === 4) { upperCut = Number(stats.cut3); diffDown = stats.cut4 !== "-" ? (pData.score - Number(stats.cut4)).toFixed(1) : '-'; }
-            else { upperCut = Number(stats.cut4); diffDown = '-'; }
-            
+        } else if (pData.grade >= 2 && pData.grade <= 9) {
+            let upperKey = "cut" + (pData.grade - 1);
+            let lowerKey = pData.grade <= 8 ? "cut" + pData.grade : null;
+            let upperCut = stats[upperKey] !== "-" ? Number(stats[upperKey]) : 0;
+            if (lowerKey && stats[lowerKey] !== "-") {
+                diffDown = (pData.score - Number(stats[lowerKey])).toFixed(1);
+            } else if (pData.grade === 9) {
+                diffDown = '-';
+            }
             if (upperCut > 0) {
                 diffUp = (upperCut - pData.score).toFixed(1);
                 let calcGoal = pData.score + (Number(diffUp) * 2);
-                let finalGoal = Math.min(calcGoal, Number(stats.cut1) + 3, 100); 
+                let finalGoal = Math.min(calcGoal, Number(stats.cut1) + 3, 100);
                 goalValue = finalGoal.toFixed(2) + " 점";
             }
         }
@@ -799,15 +806,16 @@ function populateTemplate(studentIdStr, clonePage) {
         appendTdNode(clonePage.querySelector('.rowGrade'), pData.grade); 
         appendTdNode(clonePage.querySelector('.rowDiffUp'), diffUp); 
         appendTdNode(clonePage.querySelector('.rowDiffDown'), diffDown);
-        appendTdNode(clonePage.querySelector('.rowCut1'), stats.cut1); 
-        appendTdNode(clonePage.querySelector('.rowCut2'), stats.cut2); 
-        appendTdNode(clonePage.querySelector('.rowCut3'), stats.cut3); 
-        appendTdNode(clonePage.querySelector('.rowCut4'), stats.cut4);
+        for (let ci = 1; ci <= 8; ci++) {
+            appendTdNode(clonePage.querySelector(".rowCut" + ci), stats["cut" + ci]);
+        }
         appendTdNode(clonePage.querySelector('.rowGoal'), goalValue); 
         appendTdNode(clonePage.querySelector('.rowMax'), stats.max);
     });
 
+    var avgGradeRounded = Math.round(weightedGradeSum / totalWeight);
     clonePage.querySelector('.infoAvgGrade').textContent = (weightedGradeSum / totalWeight).toFixed(2);
+    highlightGradeOnGraph(clonePage, avgGradeRounded);
     
     // 성적 분포 로직 (2페이지가 있을 경우에만 실행)
     const distBody = clonePage.querySelector('.distTableBody'); 

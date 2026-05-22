@@ -590,7 +590,7 @@
   <header>
     <div class="wrap">
       <h1>상담 분석</h1>
-      <p class="subtitle">Google 시트 주소를 입력하고 조회하면 상담·응답 데이터를 요약합니다.</p>
+      <p class="subtitle">Google 시트 주소를 입력하고 조회하면 상담·응답 데이터를 요약합니다. <a href="grades.html" style="color:#0d9488;font-weight:600;">성적 조회(9등급)</a></p>
     </div>
   </header>
 
@@ -685,6 +685,7 @@
   const CLASS_ALIASES = ["반", "class", "학급", "클래스", "반명"];
   const NUMBER_ALIASES = ["번호", "number", "no", "no.", "학번", "순번"];
   const NAME_ALIASES = ["이름", "name", "성명", "학생"];
+  const ROSTER_NAME_ALIASES = ["이름", "name", "성명", "성함", "studentname", "학생이름"];
   const COMPLETION_ALIASES = ["완료", "제출", "응답", "status", "상태", "completed", "done", "체크"];
   const CONTENT_ALIASES = ["상담", "내용", "응답", "메모", "비고", "고민", "주제", "프로필", "기록", "comment", "note"];
   const THEME_KEYWORDS = [
@@ -1171,6 +1172,78 @@
     return -1;
   }
 
+  function findColumnIndexExact(headers, aliases) {
+    var normalized = headers.map(normalizeHeader);
+    for (var a = 0; a < aliases.length; a++) {
+      var key = normalizeHeader(aliases[a]);
+      for (var i = 0; i < normalized.length; i++) {
+        if (normalized[i] === key) return i;
+      }
+    }
+    return -1;
+  }
+
+  function looksLikePersonName(value) {
+    var t = coerceText(value);
+    if (!t || t.length < 2 || t.length > 20) return false;
+    if (/^\d+([.,]\d+)?$/.test(t)) return false;
+    if (/[@./:\\]|https?:|^\d{4}[-/]/.test(t)) return false;
+    return /[가-힣a-zA-Z]/.test(t);
+  }
+
+  function inferRosterNameColumnIndex(headerRow, dataRows, excludeIndices) {
+    var exclude = {};
+    (excludeIndices || []).forEach(function (i) {
+      if (i >= 0) exclude[i] = true;
+    });
+    var exact = findColumnIndexExact(headerRow, ROSTER_NAME_ALIASES);
+    if (exact >= 0 && !exclude[exact]) return exact;
+
+    var sample = (dataRows || []).slice(0, 20);
+    var bestIdx = -1;
+    var bestScore = 0;
+    for (var col = 0; col < headerRow.length; col++) {
+      if (exclude[col]) continue;
+      var score = 0;
+      for (var r = 0; r < sample.length; r++) {
+        if (looksLikePersonName(sample[r][col])) score += 1;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = col;
+      }
+    }
+    return bestScore >= 2 ? bestIdx : -1;
+  }
+
+  function rosterEntriesForSheet(roster, sheetName) {
+    if (!roster || !roster.length) return [];
+    var filtered = rosterForSheet(roster, sheetName);
+    var byNumber = {};
+    filtered.forEach(function (entry) {
+      if (entry.번호 == null || entry.번호 <= 0) return;
+      var num = Number(entry.번호);
+      var prev = byNumber[num];
+      if (!prev) {
+        byNumber[num] = {
+          반: entry.반 || "",
+          번호: num,
+          이름: coerceText(entry.이름),
+        };
+        return;
+      }
+      if (!prev.이름 && entry.이름) prev.이름 = coerceText(entry.이름);
+      if (!prev.반 && entry.반) prev.반 = entry.반;
+    });
+    return Object.keys(byNumber)
+      .map(function (k) {
+        return byNumber[k];
+      })
+      .sort(function (a, b) {
+        return a.번호 - b.번호;
+      });
+  }
+
   function coerceNumber(value) {
     if (value === null || value === undefined || value === "") return null;
     var n = Number(String(value).replace(/[^\d.-]/g, ""));
@@ -1364,16 +1437,17 @@
     var dataRows = rawValues.slice(1).filter(function (row) {
       return row && row.some(function (cell) { return coerceText(cell) !== ""; });
     });
-    var classIdx = findColumnIndex(headerRow, CLASS_ALIASES);
-    var numberIdx = findColumnIndex(headerRow, NUMBER_ALIASES);
-    var nameIdx = findColumnIndex(headerRow, NAME_ALIASES);
+    var classIdx = findColumnIndexExact(headerRow, CLASS_ALIASES);
+    if (classIdx < 0) classIdx = findColumnIndex(headerRow, CLASS_ALIASES);
+    var numberIdx = findColumnIndexExact(headerRow, NUMBER_ALIASES);
+    if (numberIdx < 0) numberIdx = findColumnIndex(headerRow, NUMBER_ALIASES);
     if (numberIdx < 0 && headerRow.length > 0) numberIdx = 0;
-    if (nameIdx < 0 && headerRow.length > 1) nameIdx = 1;
+    var nameIdx = inferRosterNameColumnIndex(headerRow, dataRows, [classIdx, numberIdx]);
 
     var roster = [];
     dataRows.forEach(function (raw, rowIndex) {
       var classVal = classIdx >= 0 ? coerceText(raw[classIdx]) : "";
-      var numberVal = coerceNumber(raw[numberIdx]);
+      var numberVal = numberIdx >= 0 ? coerceNumber(raw[numberIdx]) : null;
       var nameVal = nameIdx >= 0 ? coerceText(raw[nameIdx]) : "";
       if (numberVal == null && !nameVal) return;
       if (numberVal == null) numberVal = rowIndex + 1;
@@ -1415,20 +1489,23 @@
     };
   }
 
-  function computeSheetParticipation(rows, rosterOrMax, referenceSheetName, rosterSource) {
+  function computeSheetParticipation(rows, rosterOrMax, referenceSheetName, rosterSource, sheetName) {
     if (Array.isArray(rosterOrMax) && rosterOrMax.length) {
+      var rosterSlice = sheetName
+        ? rosterEntriesForSheet(rosterOrMax, sheetName)
+        : rosterOrMax.slice();
       var present = {};
       (rows || []).forEach(function (r) {
-        if (r.번호 != null && r.번호 > 0) present[r.번호] = true;
+        if (r.번호 != null && r.번호 > 0) present[Number(r.번호)] = true;
       });
-      var missingStudents = rosterOrMax.filter(function (entry) {
-        return entry.번호 != null && !present[entry.번호];
+      var missingStudents = rosterSlice.filter(function (entry) {
+        return entry.번호 != null && !present[Number(entry.번호)];
       });
       return {
         referenceSheetName: referenceSheetName || "list",
         rosterSource: rosterSource || "list",
-        maxExpected: rosterOrMax.length,
-        participated: rosterOrMax.length - missingStudents.length,
+        maxExpected: rosterSlice.length,
+        participated: rosterSlice.length - missingStudents.length,
         missingNumbers: missingStudents.map(function (s) { return s.번호; }),
         missingStudents: missingStudents,
         missingCount: missingStudents.length,
@@ -1491,22 +1568,31 @@
         }
       : computeParticipationMeta(sheetAnalyses);
 
+    if (fullRoster.length) {
+      partMeta.maxExpected = Math.max.apply(
+        null,
+        sheetAnalyses.map(function (sheet) {
+          return rosterEntriesForSheet(fullRoster, sheet.sheetName).length;
+        }).concat([0])
+      );
+    }
+
     sheetAnalyses.forEach(function (sheet) {
       if (fullRoster.length) {
-        var sheetRoster = rosterForSheet(fullRoster, sheet.sheetName);
-        var rosterSlice = sheetRoster.length ? sheetRoster : fullRoster;
         sheet.participation = computeSheetParticipation(
           sheet.rows,
-          rosterSlice,
+          fullRoster,
           partMeta.referenceSheetName,
-          "list"
+          "list",
+          sheet.sheetName
         );
       } else {
         sheet.participation = computeSheetParticipation(
           sheet.rows,
           partMeta.maxExpected,
           partMeta.referenceSheetName,
-          partMeta.rosterSource
+          partMeta.rosterSource,
+          sheet.sheetName
         );
       }
     });
