@@ -333,20 +333,65 @@
     }
     .participation-banner {
       margin-bottom: 16px;
-      padding: 12px 14px;
-      border-radius: 10px;
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      font-size: 0.8125rem;
-      color: #78350f;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
       line-height: 1.5;
     }
-    .participation-banner strong { color: #92400e; }
-    .participation-banner .missing-list {
-      margin: 6px 0 0;
+    .participation-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+    .participation-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.8125rem;
       font-weight: 600;
-      color: #b45309;
+      color: #475569;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+    .participation-chip strong {
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .participation-chip--primary {
+      background: #ecfdf5;
+      border-color: #99f6e4;
+      color: #0f766e;
+    }
+    .participation-chip--primary strong { color: #0d9488; }
+    .participation-chip--warn {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      color: #64748b;
+    }
+    .participation-chip--warn strong { color: #475569; }
+    .participation-banner .missing-list {
+      margin: 10px 0 0;
+      padding-top: 10px;
+      border-top: 1px solid #f1f5f9;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #64748b;
+      text-align: center;
       word-break: break-word;
+    }
+    .participation-banner .missing-list .missing-label {
+      font-weight: 700;
+      color: #475569;
+    }
+    .participation-banner .missing-list--ok {
+      color: #0f766e;
+      font-weight: 600;
     }
     .student-card--absent {
       background: #fafafa;
@@ -366,72 +411,72 @@
     .view-tracker {
       position: fixed;
       z-index: 999;
-      width: 148px;
-      padding: 14px 12px;
+      width: 170px;
+      padding: 16px 14px;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
+      border-radius: 14px;
       background: #fff;
       box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
-      max-height: min(70vh, 320px);
+      max-height: min(70vh, 368px);
       overflow-y: auto;
     }
     .view-tracker[hidden] { display: none !important; }
     .view-tracker-head {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-bottom: 12px;
-      padding-bottom: 10px;
+      gap: 7px;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
       border-bottom: 1px solid #f1f5f9;
-      font-size: 0.6875rem;
+      font-size: 0.79rem;
       font-weight: 700;
       color: #0f766e;
       letter-spacing: -0.01em;
     }
     .view-tracker-head svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       flex-shrink: 0;
       stroke: #0d9488;
     }
     .view-tracker-fields { margin: 0; }
     .view-tracker-row {
       display: grid;
-      grid-template-columns: 52px 1fr;
-      gap: 4px 6px;
+      grid-template-columns: 60px 1fr;
+      gap: 5px 7px;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 9px;
     }
     .view-tracker-row:last-of-type { margin-bottom: 0; }
     .view-tracker-row dt {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
       margin: 0;
-      font-size: 0.625rem;
+      font-size: 0.72rem;
       font-weight: 600;
       color: #64748b;
     }
     .view-tracker-icon {
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
       flex-shrink: 0;
       stroke: #94a3b8;
     }
     .view-tracker-row dd {
       margin: 0;
-      font-size: 0.8125rem;
+      font-size: 0.93rem;
       font-weight: 700;
       color: #0f172a;
       word-break: keep-all;
     }
     .view-tracker-status {
-      margin: 10px 0 0;
-      padding: 4px 8px;
-      border-radius: 6px;
+      margin: 12px 0 0;
+      padding: 5px 9px;
+      border-radius: 7px;
       background: #fff7ed;
       color: #c2410c;
-      font-size: 0.625rem;
+      font-size: 0.72rem;
       font-weight: 700;
       text-align: center;
     }
@@ -488,7 +533,7 @@
     .fab-print svg { stroke: #fff; }
     @media (min-width: 1240px) {
       .view-tracker:not([hidden]) {
-        left: max(12px, calc(50vw - 105mm - 16mm - 148px));
+        left: max(12px, calc(50vw - 105mm - 16mm - 170px + 2mm));
         top: 50%;
         right: auto;
         transform: translateY(-50%);
@@ -1653,25 +1698,33 @@
     var p = data.participation;
     if (!p || !p.maxExpected) return "";
     var html = '<div class="participation-banner">';
+    html += '<div class="participation-stats">';
     html +=
-      "<p>총 <strong>" +
+      '<span class="participation-chip">총 <strong>' +
       esc(p.maxExpected) +
-      "명</strong> 중 <strong>" +
+      "</strong>명</span>";
+    html +=
+      '<span class="participation-chip participation-chip--primary">참여 <strong>' +
       esc(p.participated) +
-      "명</strong> 참여</p>";
+      "</strong>명</span>";
+    if (p.missingCount > 0) {
+      html +=
+        '<span class="participation-chip participation-chip--warn">미참여 <strong>' +
+        esc(p.missingCount) +
+        "</strong>명</span>";
+    }
+    html += "</div>";
     if (p.missingCount > 0) {
       var labels = (p.missingStudents || []).map(formatMissingStudentLabel).filter(Boolean);
       if (!labels.length && p.missingNumbers) {
         labels = p.missingNumbers.map(function (n) { return n + "번"; });
       }
       html +=
-        '<p class="missing-list">미참여 ' +
-        esc(p.missingCount) +
-        "명: " +
+        '<p class="missing-list"><span class="missing-label">미참여</span> ' +
         esc(labels.join(", ")) +
         "</p>";
     } else {
-      html += '<p class="missing-list">미참여 없음 (전원 참여)</p>';
+      html += '<p class="missing-list missing-list--ok">전원 참여</p>';
     }
     html += "</div>";
     return html;
