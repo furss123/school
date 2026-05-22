@@ -22,6 +22,36 @@
       border-bottom: 1px solid #e2e8f0;
       background: #fff;
     }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-home-btn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+      color: #334155;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .header-home-btn:hover {
+      border-color: #0d9488;
+      color: #0f766e;
+      background: #f0fdfa;
+    }
+    .header-home-btn[hidden] { display: none !important; }
+    .header-home-btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
     .wrap {
       max-width: 210mm;
       width: 100%;
@@ -29,6 +59,7 @@
       padding: 24px 16px;
     }
     h1 { margin: 0; font-size: 1.5rem; font-weight: 700; }
+    #homePanel[hidden] { display: none !important; }
     .subtitle { margin: 6px 0 0; font-size: 0.875rem; color: #64748b; }
     main { padding: 24px 16px 48px; }
     .card {
@@ -715,8 +746,14 @@
 </head>
 <body>
   <header>
-    <div class="wrap">
-      <h1>상담 분석</h1>
+    <div class="wrap header-inner">
+      <button type="button" class="header-home-btn" id="headerHomeBtn" hidden title="처음 화면">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M3 10.5L12 4l9 6.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9.5z"/>
+        </svg>
+        홈
+      </button>
+      <h1>상담분석</h1>
     </div>
   </header>
 
@@ -2043,6 +2080,7 @@
       renderResults(getActiveAnalysis(), id, lastMultiResult);
       document.getElementById("results").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
+      showHomeView();
       errorEl.textContent = err.message || "분석에 실패했습니다.";
       errorEl.hidden = false;
       setFabStackVisible(false);
@@ -2389,9 +2427,33 @@
     if (fab) fab.hidden = !show;
   }
 
+  function showResultsView() {
+    var homePanel = document.getElementById("homePanel");
+    var homeBtn = document.getElementById("headerHomeBtn");
+    if (homePanel) homePanel.hidden = true;
+    if (homeBtn) homeBtn.hidden = false;
+    updateViewTracker(null);
+  }
+
+  function showHomeView() {
+    var homePanel = document.getElementById("homePanel");
+    var homeBtn = document.getElementById("headerHomeBtn");
+    var results = document.getElementById("results");
+    if (homePanel) homePanel.hidden = false;
+    if (homeBtn) homeBtn.hidden = true;
+    if (results) {
+      results.classList.remove("visible");
+      results.innerHTML = "";
+    }
+    teardownScrollStudentTracker();
+    setFabStackVisible(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function renderResults(data, spreadsheetId, multi) {
     var el = document.getElementById("results");
     var s = data.summary;
+    showResultsView();
     setFabStackVisible(true);
 
     var html = "";
@@ -2415,7 +2477,6 @@
     el.classList.add("visible");
 
     bindSheetAndSubjectTabs(el, spreadsheetId);
-    setupScrollStudentTracker();
   }
 
   function bindSheetAndSubjectTabs(el, spreadsheetId) {
@@ -2436,6 +2497,10 @@
 
   renderSheetButtonGrid();
   updateAdminUi();
+
+  document.getElementById("headerHomeBtn").addEventListener("click", function () {
+    showHomeView();
+  });
 
   document.getElementById("adminEntryBtn").addEventListener("click", function () {
     if (isAdminSession()) {
