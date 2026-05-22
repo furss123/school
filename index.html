@@ -31,26 +31,24 @@
       flex-shrink: 0;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 7px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      background: #fff;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
       color: #334155;
-      font-size: 0.8125rem;
-      font-weight: 700;
       cursor: pointer;
     }
     .header-home-btn:hover {
-      border-color: #0d9488;
       color: #0f766e;
       background: #f0fdfa;
     }
-    .header-home-btn[hidden] { display: none !important; }
     .header-home-btn svg {
-      width: 16px;
-      height: 16px;
-      flex-shrink: 0;
+      width: 1.5rem;
+      height: 1.5rem;
+      display: block;
     }
     .wrap {
       max-width: 210mm;
@@ -747,11 +745,10 @@
 <body>
   <header>
     <div class="wrap header-inner">
-      <button type="button" class="header-home-btn" id="headerHomeBtn" hidden title="처음 화면">
+      <button type="button" class="header-home-btn" id="headerHomeBtn" aria-label="홈" title="처음 화면">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M3 10.5L12 4l9 6.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9.5z"/>
         </svg>
-        홈
       </button>
       <h1>상담분석</h1>
     </div>
@@ -2075,9 +2072,9 @@
       if (!hasData) throw new Error("시트에 데이터가 없습니다. 공개 공유 설정을 확인하세요.");
       sheetsData[id] = sheetInputs;
       lastMultiResult = analyzeAllSheets(sheetInputs, masterRoster);
-      activeSheetView = resolvePreferredSheetTab(lastMultiResult.sheets, entry.tab);
-      activeSubjectView = "all";
-      renderResults(getActiveAnalysis(), id, lastMultiResult);
+      activeSheetView = null;
+      activeSubjectView = null;
+      renderResults(null, id, lastMultiResult);
       document.getElementById("results").scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       showHomeView();
@@ -2091,7 +2088,7 @@
     }
   }
   var activeSheetView = null;
-  var activeSubjectView = "all";
+  var activeSubjectView = null;
   var TEACHER_MESSAGE_TITLE = "담임 선생님께 전하는 한마디";
   var SUBJECT_FILTER_OPTIONS = [
     { id: "teacher", label: "담임샘께!" },
@@ -2111,9 +2108,12 @@
   }
 
   function getActiveAnalysis() {
-    if (!lastMultiResult) return null;
-    var found = lastMultiResult.sheets.find(function (s) { return s.sheetName === activeSheetView; });
-    return found || lastMultiResult.sheets[0] || null;
+    if (!lastMultiResult || !activeSheetView) return null;
+    return (
+      lastMultiResult.sheets.find(function (s) {
+        return s.sheetName === activeSheetView;
+      }) || null
+    );
   }
 
   function isTeacherMessageSection(sec) {
@@ -2150,7 +2150,10 @@
 
   function renderSheetTabs() {
     if (!lastMultiResult) return "";
-    var html = '<div class="sheet-banner"><strong>' + esc(activeSheetView || "") + "</strong></div>";
+    var html = "";
+    if (activeSheetView) {
+      html += '<div class="sheet-banner"><strong>' + esc(activeSheetView) + "</strong></div>";
+    }
     html += '<div class="sheet-tabs" role="tablist">';
     lastMultiResult.sheets.forEach(function (sheet) {
       var active = activeSheetView === sheet.sheetName ? " active" : "";
@@ -2183,9 +2186,12 @@
   }
 
   function renderCategoryBlocks(row, subjectFilter) {
+    if (!subjectFilter) {
+      return '<p class="muted subject-empty">과목을 선택해 주세요.</p>';
+    }
     var sections = row.sections || [];
     var filtered = sections.filter(function (sec) {
-      return sectionMatchesSubjectFilter(sec, subjectFilter || "all");
+      return sectionMatchesSubjectFilter(sec, subjectFilter);
     });
     if (!filtered.length) {
       if (subjectFilter === "teacher") {
@@ -2429,18 +2435,16 @@
 
   function showResultsView() {
     var homePanel = document.getElementById("homePanel");
-    var homeBtn = document.getElementById("headerHomeBtn");
     if (homePanel) homePanel.hidden = true;
-    if (homeBtn) homeBtn.hidden = false;
     updateViewTracker(null);
   }
 
   function showHomeView() {
     var homePanel = document.getElementById("homePanel");
-    var homeBtn = document.getElementById("headerHomeBtn");
     var results = document.getElementById("results");
+    activeSheetView = null;
+    activeSubjectView = null;
     if (homePanel) homePanel.hidden = false;
-    if (homeBtn) homeBtn.hidden = true;
     if (results) {
       results.classList.remove("visible");
       results.innerHTML = "";
@@ -2452,7 +2456,7 @@
 
   function renderResults(data, spreadsheetId, multi) {
     var el = document.getElementById("results");
-    var s = data.summary;
+    var analysis = data || getActiveAnalysis();
     showResultsView();
     setFabStackVisible(true);
 
@@ -2462,7 +2466,17 @@
     } else {
       html += renderSubjectTabsOnly();
     }
-    if (!s.총응답 && !(data.participation && data.participation.missingCount)) {
+    if (!analysis) {
+      html += '<p class="student-cards-empty">반을 선택해 주세요.</p>';
+      el.innerHTML = html;
+      el.classList.add("visible");
+      teardownScrollStudentTracker();
+      bindSheetAndSubjectTabs(el, spreadsheetId);
+      return;
+    }
+
+    var s = analysis.summary;
+    if (!s.총응답 && !(analysis.participation && analysis.participation.missingCount)) {
       html += '<p class="student-cards-empty">이 탭에 분석할 데이터가 없습니다.</p>';
       el.innerHTML = html;
       el.classList.add("visible");
@@ -2471,7 +2485,7 @@
       return;
     }
 
-    html += renderStudentCards(data);
+    html += renderStudentCards(analysis);
 
     el.innerHTML = html;
     el.classList.add("visible");
@@ -2483,7 +2497,7 @@
     el.querySelectorAll(".sheet-tab").forEach(function (btn) {
       btn.addEventListener("click", function () {
         activeSheetView = btn.getAttribute("data-sheet");
-        activeSubjectView = "all";
+        activeSubjectView = null;
         renderResults(getActiveAnalysis(), spreadsheetId, lastMultiResult);
       });
     });
