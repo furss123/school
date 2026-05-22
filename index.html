@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>상담 분석</title>
-  <!-- ui-version: 20260522-list-roster-participation -->
+  <!-- ui-version: 20260522-sheet-buttons-admin -->
   <style>
     * { box-sizing: border-box; }
     html {
@@ -38,42 +38,168 @@
       padding: 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
-    #form.card {
+    #homePanel.card {
       width: 100%;
       max-width: 100%;
     }
-    label { display: block; font-size: 0.875rem; font-weight: 600; color: #334155; }
-    .row { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
-    @media (min-width: 640px) {
-      .row { flex-direction: row; align-items: stretch; }
+    .home-lead {
+      margin: 0 0 16px;
+      font-size: 0.9375rem;
+      color: #475569;
     }
-    input[type="url"] {
-      flex: 1;
-      padding: 10px 12px;
+    .sheet-btn-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (min-width: 520px) {
+      .sheet-btn-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .sheet-launch-btn {
+      padding: 14px 10px;
+      border: 1px solid #99f6e4;
+      border-radius: 10px;
+      background: #f0fdfa;
+      color: #0f766e;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .sheet-launch-btn:hover:not(:disabled) {
+      background: #ccfbf1;
+      border-color: #5eead4;
+      box-shadow: 0 2px 8px rgba(13, 148, 136, 0.12);
+    }
+    .sheet-launch-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .sheet-launch-btn.is-loading {
+      background: #e2e8f0;
+      border-color: #cbd5e1;
+      color: #64748b;
+    }
+    .home-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 12px;
+    }
+    .admin-entry-btn {
+      padding: 6px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      color: #64748b;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .admin-entry-btn:hover { border-color: #cbd5e1; color: #334155; }
+    #adminPanel {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed #e2e8f0;
+    }
+    #adminPanel[hidden] { display: none !important; }
+    .admin-panel-title {
+      margin: 0 0 12px;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .admin-form label {
+      display: block;
+      margin-top: 10px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #334155;
+    }
+    .admin-form label:first-child { margin-top: 0; }
+    .admin-form input[type="text"],
+    .admin-form input[type="url"],
+    .admin-form input[type="password"] {
+      width: 100%;
+      margin-top: 6px;
+      padding: 9px 11px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       font-size: 0.875rem;
     }
-    input[type="url"]:focus {
+    .admin-form input:focus {
       outline: none;
       border-color: #0d9488;
       box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
     }
-    button[type="submit"] {
-      flex: 0 0 auto;
-      min-width: 9rem;
-      padding: 10px 40px;
-      border: none;
+    .admin-actions {
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .admin-btn {
+      padding: 8px 14px;
       border-radius: 8px;
-      background: #0d9488;
-      color: #fff;
-      font-size: 0.875rem;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      font-size: 0.8125rem;
       font-weight: 600;
       cursor: pointer;
-      white-space: nowrap;
     }
-    button[type="submit"]:hover:not(:disabled) { background: #0f766e; }
-    button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
+    .admin-btn-primary {
+      border: none;
+      background: #0d9488;
+      color: #fff;
+    }
+    .admin-btn-primary:hover { background: #0f766e; }
+    .admin-btn-danger {
+      border-color: #fecaca;
+      color: #b91c1c;
+      background: #fef2f2;
+    }
+    .admin-registry-list {
+      margin: 14px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .admin-registry-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      font-size: 0.8125rem;
+      margin-bottom: 8px;
+    }
+    .admin-registry-list .registry-meta {
+      min-width: 0;
+      flex: 1;
+    }
+    .admin-registry-list .registry-meta strong {
+      display: block;
+      color: #0f172a;
+    }
+    .admin-registry-list .registry-meta span {
+      display: block;
+      margin-top: 2px;
+      color: #64748b;
+      word-break: break-all;
+    }
+    .admin-hint {
+      margin: 8px 0 0;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .admin-login-box {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
     .error {
       margin-top: 12px;
       padding: 10px 12px;
@@ -569,8 +695,9 @@
       @page { size: A4; margin: 12mm; }
       .fab-stack,
       .view-tracker,
-      #form,
-      header .subtitle { display: none !important; }
+      #homePanel,
+      #adminPanel,
+      .home-toolbar { display: none !important; }
       .wrap,
       #results { max-width: 100%; }
       .student-cards-list {
@@ -590,24 +717,48 @@
   <header>
     <div class="wrap">
       <h1>상담 분석</h1>
-      <p class="subtitle">Google 시트 주소를 입력하고 조회하면 상담·응답 데이터를 요약합니다. <a href="grades.html" style="color:#0d9488;font-weight:600;">성적 조회(9등급)</a></p>
     </div>
   </header>
 
   <main class="wrap">
-    <form id="form" class="card">
-      <label for="sheetUrl">구글 시트 주소</label>
-      <div class="row">
-        <input
-          type="url"
-          id="sheetUrl"
-          required
-          placeholder="https://docs.google.com/spreadsheets/d/..."
-        />
-        <button type="submit" id="submitBtn">조회</button>
+    <section id="homePanel" class="card">
+      <div class="home-toolbar">
+        <button type="button" class="admin-entry-btn" id="adminEntryBtn">관리자</button>
       </div>
+      <p class="home-lead">반을 선택하면 상담·응답 결과를 바로 불러옵니다.</p>
+      <div id="sheetButtonGrid" class="sheet-btn-grid" role="group" aria-label="시트 조회"></div>
       <p id="error" class="error" hidden></p>
-    </form>
+
+      <div id="adminLoginBox" class="admin-login-box" hidden>
+        <p class="admin-panel-title">관리자 로그인</p>
+        <label for="adminPasswordInput">비밀번호</label>
+        <input type="password" id="adminPasswordInput" autocomplete="current-password" />
+        <div class="admin-actions">
+          <button type="button" class="admin-btn admin-btn-primary" id="adminLoginBtn">로그인</button>
+          <button type="button" class="admin-btn" id="adminLoginCancelBtn">취소</button>
+        </div>
+        <p class="admin-hint">최초 비밀번호: <code>school-admin</code> (로그인 후 변경 가능)</p>
+      </div>
+
+      <div id="adminPanel" hidden>
+        <p class="admin-panel-title">시트 등록 (관리자)</p>
+        <form id="adminSheetForm" class="admin-form">
+          <label for="adminSheetLabel">시트 이름 (버튼 표시)</label>
+          <input type="text" id="adminSheetLabel" placeholder="예: 1반, 상담 3월" required />
+          <label for="adminSheetUrl">구글 시트 주소</label>
+          <input type="url" id="adminSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." required />
+          <label for="adminSheetTab">기본 탭 (선택)</label>
+          <input type="text" id="adminSheetTab" placeholder="예: 1반 (비우면 첫 탭)" />
+          <label for="adminNewPassword">관리자 비밀번호 변경 (선택)</label>
+          <input type="password" id="adminNewPassword" autocomplete="new-password" />
+          <div class="admin-actions">
+            <button type="submit" class="admin-btn admin-btn-primary">시트 추가</button>
+            <button type="button" class="admin-btn" id="adminLogoutBtn">로그아웃</button>
+          </div>
+        </form>
+        <ul id="adminRegistryList" class="admin-registry-list" aria-label="등록된 시트"></ul>
+      </div>
+    </section>
 
     <div id="results"></div>
   </main>
@@ -681,6 +832,11 @@
 
   const SPREADSHEET_ID_PATTERN = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
   const CLASS_ROSTER_SPREADSHEET_ID = "1GHbpOBkx2dLZvhiBzBIgpBgN5OBB80G-mQFcrfdpFXQ";
+  const DEFAULT_RESPONSE_SHEET_ID = "1oH3Er_9UF_A6HDQEK_1KjFxp54M_JJrU";
+  const SHEET_REGISTRY_KEY = "school-sheet-registry-v1";
+  const ADMIN_PASSWORD_KEY = "school-admin-password-v1";
+  const ADMIN_SESSION_KEY = "school-admin-session-v1";
+  const DEFAULT_ADMIN_PASSWORD = "school-admin";
   const PROFILE_PATTERN = /\[(\d+)반\]\s*\[(\d+)\]\s*\[([^\]]+)\]/;
 
   const CLASS_ALIASES = ["반", "class", "학급", "클래스", "반명"];
@@ -1709,6 +1865,189 @@
 
   var sheetsData = {};
   var lastMultiResult = null;
+  var analysisInFlight = false;
+
+  function getDefaultSheetRegistry() {
+    var baseUrl =
+      "https://docs.google.com/spreadsheets/d/" + DEFAULT_RESPONSE_SHEET_ID + "/edit?usp=sharing";
+    return [1, 2, 3, 4, 5, 6, 7, 8].map(function (n) {
+      var label = n + "반";
+      return { id: "class-" + n, label: label, url: baseUrl, tab: label };
+    });
+  }
+
+  function loadSheetRegistry() {
+    try {
+      var raw = localStorage.getItem(SHEET_REGISTRY_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch (err) { /* ignore */ }
+    return getDefaultSheetRegistry();
+  }
+
+  function saveSheetRegistry(registry) {
+    localStorage.setItem(SHEET_REGISTRY_KEY, JSON.stringify(registry));
+  }
+
+  function findRegistryEntry(id) {
+    return loadSheetRegistry().find(function (item) {
+      return item.id === id;
+    });
+  }
+
+  function getAdminPassword() {
+    return localStorage.getItem(ADMIN_PASSWORD_KEY) || DEFAULT_ADMIN_PASSWORD;
+  }
+
+  function setAdminPassword(password) {
+    localStorage.setItem(ADMIN_PASSWORD_KEY, password);
+  }
+
+  function isAdminSession() {
+    return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+  }
+
+  function setAdminSession(active) {
+    if (active) sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+    else sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  }
+
+  function resolvePreferredSheetTab(sheets, preferredTab) {
+    if (!sheets || !sheets.length) return null;
+    if (!preferredTab) return sheets[0].sheetName;
+    var key = normalizeSheetClassKey(preferredTab);
+    var match = sheets.find(function (s) {
+      return normalizeSheetClassKey(s.sheetName) === key;
+    });
+    return match ? match.sheetName : sheets[0].sheetName;
+  }
+
+  function renderSheetButtonGrid() {
+    var grid = document.getElementById("sheetButtonGrid");
+    if (!grid) return;
+    var registry = loadSheetRegistry();
+    grid.innerHTML = registry
+      .map(function (item) {
+        return (
+          '<button type="button" class="sheet-launch-btn" data-entry-id="' +
+          esc(item.id) +
+          '">' +
+          esc(item.label) +
+          " 조회</button>"
+        );
+      })
+      .join("");
+    grid.querySelectorAll(".sheet-launch-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var entry = findRegistryEntry(btn.getAttribute("data-entry-id"));
+        if (entry) launchSheetAnalysis(entry, btn);
+      });
+    });
+  }
+
+  function renderAdminRegistryList() {
+    var listEl = document.getElementById("adminRegistryList");
+    if (!listEl) return;
+    var registry = loadSheetRegistry();
+    listEl.innerHTML = registry
+      .map(function (item) {
+        return (
+          "<li><div class=\"registry-meta\"><strong>" +
+          esc(item.label) +
+          " 조회</strong><span>" +
+          esc(item.url) +
+          (item.tab ? " · 탭: " + esc(item.tab) : "") +
+          "</span></div><button type=\"button\" class=\"admin-btn admin-btn-danger\" data-delete-id=\"" +
+          esc(item.id) +
+          "\">삭제</button></li>"
+        );
+      })
+      .join("");
+    listEl.querySelectorAll("[data-delete-id]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-delete-id");
+        var next = loadSheetRegistry().filter(function (item) {
+          return item.id !== id;
+        });
+        if (!next.length) {
+          alert("최소 1개의 시트 버튼이 필요합니다.");
+          return;
+        }
+        saveSheetRegistry(next);
+        renderSheetButtonGrid();
+        renderAdminRegistryList();
+      });
+    });
+  }
+
+  function updateAdminUi() {
+    var loggedIn = isAdminSession();
+    var panel = document.getElementById("adminPanel");
+    var loginBox = document.getElementById("adminLoginBox");
+    if (panel) panel.hidden = !loggedIn;
+    if (loginBox) loginBox.hidden = true;
+    if (loggedIn) renderAdminRegistryList();
+  }
+
+  function showAdminLogin() {
+    var loginBox = document.getElementById("adminLoginBox");
+    if (loginBox) {
+      loginBox.hidden = false;
+      var input = document.getElementById("adminPasswordInput");
+      if (input) {
+        input.value = "";
+        input.focus();
+      }
+    }
+  }
+
+  function setSheetButtonsDisabled(disabled) {
+    document.querySelectorAll(".sheet-launch-btn").forEach(function (btn) {
+      btn.disabled = disabled;
+      btn.classList.toggle("is-loading", disabled);
+    });
+  }
+
+  async function launchSheetAnalysis(entry, triggerBtn) {
+    if (analysisInFlight) return;
+    var errorEl = document.getElementById("error");
+    errorEl.hidden = true;
+    document.getElementById("results").classList.remove("visible");
+    document.getElementById("results").innerHTML = "";
+    teardownScrollStudentTracker();
+    setFabStackVisible(false);
+
+    analysisInFlight = true;
+    setSheetButtonsDisabled(true);
+    var prevLabel = triggerBtn ? triggerBtn.textContent : "";
+    if (triggerBtn) triggerBtn.textContent = "분석 중…";
+
+    try {
+      var id = parseSpreadsheetId(entry.url);
+      var sheetInputs = await fetchAllSheetsGviz(id);
+      var masterRoster = await fetchClassRosterFromMaster();
+      var hasData = sheetInputs.some(function (s) {
+        return s.values && s.values.length;
+      });
+      if (!hasData) throw new Error("시트에 데이터가 없습니다. 공개 공유 설정을 확인하세요.");
+      sheetsData[id] = sheetInputs;
+      lastMultiResult = analyzeAllSheets(sheetInputs, masterRoster);
+      activeSheetView = resolvePreferredSheetTab(lastMultiResult.sheets, entry.tab);
+      activeSubjectView = "all";
+      renderResults(getActiveAnalysis(), id, lastMultiResult);
+      document.getElementById("results").scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      errorEl.textContent = err.message || "분석에 실패했습니다.";
+      errorEl.hidden = false;
+      setFabStackVisible(false);
+    } finally {
+      analysisInFlight = false;
+      setSheetButtonsDisabled(false);
+      if (triggerBtn) triggerBtn.textContent = prevLabel || entry.label + " 조회";
+    }
+  }
   var activeSheetView = null;
   var activeSubjectView = "all";
   var TEACHER_MESSAGE_TITLE = "담임 선생님께 전하는 한마디";
@@ -2091,10 +2430,73 @@
     });
   }
 
-  var form = document.getElementById("form");
-  var sheetUrl = document.getElementById("sheetUrl");
-  var submitBtn = document.getElementById("submitBtn");
-  var errorEl = document.getElementById("error");
+  renderSheetButtonGrid();
+  updateAdminUi();
+
+  document.getElementById("adminEntryBtn").addEventListener("click", function () {
+    if (isAdminSession()) {
+      updateAdminUi();
+      document.getElementById("adminPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    showAdminLogin();
+  });
+
+  document.getElementById("adminLoginBtn").addEventListener("click", function () {
+    var input = document.getElementById("adminPasswordInput");
+    var value = input ? input.value : "";
+    if (value !== getAdminPassword()) {
+      alert("비밀번호가 올바르지 않습니다.");
+      return;
+    }
+    setAdminSession(true);
+    updateAdminUi();
+  });
+
+  document.getElementById("adminLoginCancelBtn").addEventListener("click", function () {
+    var loginBox = document.getElementById("adminLoginBox");
+    if (loginBox) loginBox.hidden = true;
+  });
+
+  document.getElementById("adminLogoutBtn").addEventListener("click", function () {
+    setAdminSession(false);
+    updateAdminUi();
+  });
+
+  document.getElementById("adminSheetForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!isAdminSession()) {
+      alert("관리자 로그인이 필요합니다.");
+      return;
+    }
+    var label = coerceText(document.getElementById("adminSheetLabel").value);
+    var url = coerceText(document.getElementById("adminSheetUrl").value);
+    var tab = coerceText(document.getElementById("adminSheetTab").value);
+    var newPassword = coerceText(document.getElementById("adminNewPassword").value);
+    if (!label || !url) {
+      alert("시트 이름과 주소를 입력해 주세요.");
+      return;
+    }
+    try {
+      parseSpreadsheetId(url);
+    } catch (err) {
+      alert(err.message || "구글 시트 주소 형식을 확인해 주세요.");
+      return;
+    }
+    var registry = loadSheetRegistry();
+    registry.push({
+      id: "sheet-" + Date.now(),
+      label: label,
+      url: url,
+      tab: tab || null,
+    });
+    saveSheetRegistry(registry);
+    document.getElementById("adminSheetForm").reset();
+    if (newPassword) setAdminPassword(newPassword);
+    renderSheetButtonGrid();
+    renderAdminRegistryList();
+    alert("시트가 추가되었습니다.");
+  });
 
   document.getElementById("fabTop").addEventListener("click", function () {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2111,37 +2513,6 @@
     window.print();
   });
 
-  form.addEventListener("submit", async function (e) {
-    e.preventDefault();
-    errorEl.hidden = true;
-    document.getElementById("results").classList.remove("visible");
-    document.getElementById("results").innerHTML = "";
-    teardownScrollStudentTracker();
-    setFabStackVisible(false);
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "분석 중…";
-
-    try {
-      var id = parseSpreadsheetId(sheetUrl.value);
-      var sheetInputs = await fetchAllSheetsGviz(id);
-      var masterRoster = await fetchClassRosterFromMaster();
-      var hasData = sheetInputs.some(function (s) { return s.values && s.values.length; });
-      if (!hasData) throw new Error("시트에 데이터가 없습니다. 공개 공유 설정을 확인하세요.");
-      sheetsData[id] = sheetInputs;
-      lastMultiResult = analyzeAllSheets(sheetInputs, masterRoster);
-      activeSheetView = lastMultiResult.sheets[0] ? lastMultiResult.sheets[0].sheetName : null;
-      activeSubjectView = "all";
-      renderResults(getActiveAnalysis(), id, lastMultiResult);
-    } catch (err) {
-      errorEl.textContent = err.message || "분석에 실패했습니다.";
-      errorEl.hidden = false;
-      setFabStackVisible(false);
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "조회";
-    }
-  });
 })();
   </script>
 </body>
