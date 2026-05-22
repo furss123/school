@@ -11,6 +11,7 @@
       --bg-page: #eef2f6;
       --bg-surface: #ffffff;
       --bg-muted: #f8fafc;
+      --bg-category: #f1f5f9;
       --bg-accent-soft: #f0fdfa;
       --bg-accent-banner: #ecfdf5;
       --border: #e2e8f0;
@@ -26,6 +27,10 @@
       --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.08);
       --chip-bg: #ffffff;
       --chip-active-text: #ffffff;
+      --badge-done-bg: #ecfdf5;
+      --badge-done-text: #0f766e;
+      --badge-pending-bg: #f8fafc;
+      --badge-pending-text: #64748b;
       --error-bg: #fef2f2;
       --error-text: #b91c1c;
       --danger-bg: #fef2f2;
@@ -39,21 +44,26 @@
       --bg-page: #0b1220;
       --bg-surface: #1e293b;
       --bg-muted: #334155;
+      --bg-category: #2d3f56;
       --bg-accent-soft: #134e4a;
       --bg-accent-banner: #115e59;
       --border: #334155;
       --border-strong: #475569;
       --border-accent: #0f766e;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --text-subtle: #cbd5e1;
+      --text: #f8fafc;
+      --text-muted: #cbd5e1;
+      --text-subtle: #e2e8f0;
       --text-accent: #ccfbf1;
       --accent: #2dd4bf;
       --accent-hover: #5eead4;
       --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
       --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
       --chip-bg: #1e293b;
-      --chip-active-text: #0f172a;
+      --chip-active-text: #ffffff;
+      --badge-done-bg: #134e4a;
+      --badge-done-text: #99f6e4;
+      --badge-pending-bg: #334155;
+      --badge-pending-text: #e2e8f0;
       --error-bg: #450a0a;
       --error-text: #fca5a5;
       --danger-bg: #450a0a;
@@ -96,19 +106,15 @@
       flex-shrink: 0;
       width: 2.75rem;
       height: 2.75rem;
-      border-radius: 50%;
-      overflow: hidden;
-      box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
-      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .header-logo img {
       width: 100%;
       height: 100%;
       display: block;
-      object-fit: cover;
-    }
-    html[data-theme="dark"] .header-logo {
-      box-shadow: 0 0 0 1px var(--border-accent), var(--shadow-sm);
+      object-fit: contain;
     }
     .header-title {
       min-width: 0;
@@ -324,12 +330,12 @@
     }
     .admin-registry-list .registry-meta strong {
       display: block;
-      color: #0f172a;
+      color: var(--text);
     }
     .admin-registry-list .registry-meta span {
       display: block;
       margin-top: 2px;
-      color: #64748b;
+      color: var(--text-muted);
       word-break: break-all;
     }
     .admin-login-box {
@@ -378,7 +384,7 @@
       width: 100%;
     }
     .muted { color: var(--text-muted); }
-    .preview { color: var(--text-subtle); word-break: break-word; line-height: 1.5; }
+    .preview { color: var(--text); word-break: break-word; line-height: 1.55; }
     .student-cards,
     .student-cards-list {
       display: flex;
@@ -416,11 +422,12 @@
     .student-card-divider {
       margin: 0;
       border: none;
-      border-top: 2px solid #e5e7eb;
+      border-top: 2px solid var(--border);
       height: 0;
     }
     .student-card:last-child .student-card-divider {
-      border-top-color: #f1f5f9;
+      border-top-color: var(--border);
+      opacity: 0.6;
     }
     .student-cards-empty {
       padding: 24px 16px;
@@ -450,14 +457,14 @@
       max-width: 100%;
       padding: 12px 16px;
       border-radius: 8px;
-      background: var(--bg-muted);
-      border: 1px solid var(--border);
+      background: var(--bg-category);
+      border: 1px solid var(--border-strong);
       box-sizing: border-box;
     }
     .category-block .cat-title {
       font-size: 0.8125rem;
       font-weight: 700;
-      color: var(--accent);
+      color: var(--accent-hover);
       margin-bottom: 6px;
       line-height: 1.35;
     }
@@ -466,18 +473,22 @@
       color: var(--text);
       word-break: break-word;
       white-space: pre-wrap;
-      line-height: 1.5;
+      line-height: 1.6;
     }
     .category-block .cat-field {
       font-size: 0.875rem;
-      color: #334155;
+      color: var(--text);
       margin-top: 5px;
-      line-height: 1.45;
+      line-height: 1.55;
     }
     .category-block .cat-field span {
       font-weight: 600;
-      color: #475569;
+      color: var(--text-subtle);
       margin-right: 4px;
+    }
+    .category-block--teacher {
+      background: var(--bg-accent-soft);
+      border-color: var(--border-accent);
     }
     .student-response-header {
       display: flex;
@@ -525,14 +536,14 @@
       letter-spacing: 0.02em;
     }
     .status-badge.done {
-      background: #ecfdf5;
-      color: #0f766e;
-      border: 1px solid #99f6e4;
+      background: var(--badge-done-bg);
+      color: var(--badge-done-text);
+      border: 1px solid var(--border-accent);
     }
     .status-badge.pending {
-      background: #f8fafc;
-      color: #94a3b8;
-      border: 1px solid #e2e8f0;
+      background: var(--badge-pending-bg);
+      color: var(--badge-pending-text);
+      border: 1px solid var(--border-strong);
     }
     .sheet-banner {
       margin-bottom: 16px;
@@ -612,6 +623,7 @@
     .subject-empty {
       margin: 0;
       font-size: 0.8125rem;
+      color: var(--text-muted);
     }
     .participation-banner {
       margin-bottom: 16px;
@@ -682,13 +694,13 @@
       opacity: 0.92;
     }
     .student-card--absent .student-name {
-      color: #64748b;
+      color: var(--text-muted);
       font-weight: 600;
     }
     .student-card--absent .absent-note {
       margin: 0;
       font-size: 0.8125rem;
-      color: #94a3b8;
+      color: var(--text-muted);
     }
     .view-tracker {
       position: fixed;
@@ -879,7 +891,7 @@
       </button>
       <div class="header-brand">
         <span class="header-logo">
-          <img src="assets/namak-logo.svg" width="44" height="44" alt="남악고등학교" />
+          <img src="assets/namak-logo.png" width="44" height="44" alt="남악고등학교" />
         </span>
         <h1 class="header-title">2026 남악고등학교 1학년 설문 결과</h1>
       </div>
