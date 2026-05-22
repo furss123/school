@@ -970,7 +970,7 @@
   function simplifySectionTitle(title) {
     if (!title) return "응답";
     var t = String(title).trim();
-    if (/💌|선생님께/.test(t)) return "담임 선생님께 전하는 한마디";
+    if (/💌|선생님께/.test(t)) return TEACHER_MESSAGE_TITLE;
     var subjectMatch = t.match(/과목\s*\d+\s*\(([^)]+)\)/);
     if (subjectMatch) return subjectMatch[1].trim();
     var lastParen = t.match(/\(([^)]+)\)\s*$/);
@@ -985,7 +985,7 @@
 
   function parseTeacherSection(chunk) {
     var headerMatch = chunk.match(/^(💌[^\n"]*)/);
-    var title = "담임 선생님께 전하는 한마디";
+    var title = TEACHER_MESSAGE_TITLE;
     var quoteMatch = chunk.match(/[""]([^""]+)[""]/s) || chunk.match(/[""]([^""]+)[""]/);
     var body = quoteMatch ? quoteMatch[1].trim() : chunk.replace(/^💌[^\n]*\n?/, "").replace(title, "").trim();
     return { title: title, body: body, fields: [] };
@@ -1548,7 +1548,9 @@
   var lastMultiResult = null;
   var activeSheetView = null;
   var activeSubjectView = "all";
+  var TEACHER_MESSAGE_TITLE = "담임 선생님께 전하는 한마디";
   var SUBJECT_FILTER_OPTIONS = [
+    { id: "teacher", label: "담임샘께!" },
     { id: "all", label: "모든 과목" },
     { id: "국어", label: "국어" },
     { id: "수학", label: "수학" },
@@ -1570,11 +1572,16 @@
     return found || lastMultiResult.sheets[0] || null;
   }
 
+  function isTeacherMessageSection(sec) {
+    return !!sec && simplifySectionTitle(sec.title || "") === TEACHER_MESSAGE_TITLE;
+  }
+
   function sectionMatchesSubjectFilter(sec, subjectId) {
-    if (!subjectId || subjectId === "all") return true;
     if (!isMeaningfulSection(sec)) return false;
+    if (subjectId === "teacher") return isTeacherMessageSection(sec);
+    if (!subjectId || subjectId === "all") return !isTeacherMessageSection(sec);
+    if (isTeacherMessageSection(sec)) return false;
     var title = simplifySectionTitle(sec.title || "");
-    if (title === "담임 선생님께 전하는 한마디") return false;
     if (title === subjectId) return true;
     if (title.indexOf(subjectId) >= 0) return true;
     return false;
@@ -1637,6 +1644,9 @@
       return sectionMatchesSubjectFilter(sec, subjectFilter || "all");
     });
     if (!filtered.length) {
+      if (subjectFilter === "teacher") {
+        return '<p class="muted subject-empty">담임 선생님께 보낸 한마디가 없습니다.</p>';
+      }
       if (subjectFilter && subjectFilter !== "all") {
         return '<p class="muted subject-empty">해당 과목 응답이 없습니다.</p>';
       }
