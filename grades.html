@@ -1,0 +1,924 @@
+﻿
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>남악고 1학년 성적 조회 및 분석 보고서</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        @page { size: A4; margin: 0; }
+        body { font-family: 'Malgun Gothic', sans-serif; font-size: 12px; line-height: 1.4; margin: 0; padding: 0; background: #f4f6fb; }
+        
+        /* 대시보드 및 입력창 영역 */
+        .search-container { max-width: 950px; margin: 20px auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        
+        /* 업로드 영역 */
+        .upload-section { margin-top: 15px; margin-bottom: 25px; }
+        .upload-box {
+            display: flex; align-items: center; gap: 15px; padding: 16px 20px;
+            background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .upload-box:hover { border-color: #3b82f6; background: #f1f5f9; }
+        .upload-box.success { border-color: #10b981; background: #ecfdf5; }
+        .upload-icon { width: 32px; height: 32px; color: #64748b; }
+        .upload-box.success .upload-icon { color: #10b981; }
+        .upload-text-container { display: flex; flex-direction: column; gap: 2px; }
+        .upload-title { font-size: 14px; font-weight: bold; color: #334155; }
+        .upload-desc { font-size: 12px; color: #64748b; }
+
+        /* 입력창 및 조회 버튼 */
+        .input-area { display: flex; gap: 12px; align-items: center; }
+        input { flex: 1; padding: 12px 16px; font-size: 15px; border: 1.5px solid #e2e8f0; border-radius: 10px; outline: none; transition: all 0.2s; }
+        input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .search-btn { 
+            padding: 12px 24px; border: none; border-radius: 10px; background: #3b82f6; 
+            color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap;
+        }
+        .search-btn:hover { background: #2563eb; }
+
+        /* 인쇄 버튼 영역 */
+        .global-print-area { text-align: center; margin-top: 25px; margin-bottom: 5px; display: none; }
+        .print-btn { 
+            background: #1e293b; padding: 14px 40px; font-size: 16px; color: white; 
+            border: none; border-radius: 10px; font-weight: bold; cursor: pointer; 
+            display: inline-flex; align-items: center; gap: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background 0.2s;
+        }
+        .print-btn:hover { background: #0f172a; }
+
+        /* 과목별 기본 정보 대시보드 섹션 */
+        .stats-dashboard { display: none; margin-top: 25px; padding-top: 20px; border-top: 2px solid #f1f5f9; }
+        .stats-dashboard h3 { font-size: 17px; color: #1e293b; margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .stats-dashboard h3::before { content: ''; display: inline-block; width: 4px; height: 18px; background: #3b82f6; border-radius: 2px; }
+        .stats-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+        .stats-table th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px 6px; border: 1px solid #e2e8f0; text-align: center; }
+        .stats-table td { padding: 9px 6px; text-align: center; border: 1px solid #e2e8f0; color: #334155; }
+        .stats-table .stats-label { background: #f8fafc; color: #475569; font-weight: bold; width: 15%; text-align: center; }
+        .stats-table tr:hover { background: #fcfcfc; }
+        .highlight-blue { color: #2563eb; font-weight: bold; }
+        .highlight-red { color: #dc2626; font-weight: bold; }
+
+        .demo-banner {
+            margin-bottom: 18px; padding: 14px 18px; border-radius: 12px;
+            background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+            border: 1px solid #bfdbfe; color: #1e3a5f;
+        }
+        .demo-banner strong { color: #1d4ed8; }
+        .demo-banner p { margin: 6px 0 0; font-size: 13px; color: #475569; line-height: 1.5; }
+        .demo-examples {
+            margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+            font-size: 12px; color: #64748b;
+        }
+        .demo-chip {
+            display: inline-block; padding: 4px 10px; border-radius: 999px;
+            background: #fff; border: 1px solid #cbd5e1; color: #334155; font-weight: 600;
+        }
+
+        /* 보고서 페이지 스타일 */
+        .report-wrapper { display: none; margin-top: 30px; }
+        /* 인쇄 시 각 학생의 문서가 강제로 나뉘도록 설정 */
+        .report-wrapper { page-break-after: always; } 
+        .report-wrapper:last-child { page-break-after: auto; }
+
+        .page { width: 210mm; height: 296mm; padding: 15mm 18mm; margin: 0 auto; box-sizing: border-box; background: white; border: 1px solid #e2e8f0; box-shadow: 0 8px 24px rgba(0,0,0,0.04); }
+        .page:last-child { margin-bottom: 0; }
+        
+        h1 { text-align: center; font-size: 20px; margin: 0 0 12px 0; text-decoration: underline; }
+        .student-info { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 12px; font-weight: bold; font-size: 13px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; table-layout: fixed; }
+        th, td { border: 1px solid #000; padding: 6px 4px; text-align: center; font-size: 11px; }
+        th { background-color: #f2f2f2; }
+        
+        .formula-compact-box { background-color: #f9f9f9; padding: 8px 12px; border: 1px solid #dcdcdc; border-radius: 6px; margin-bottom: 12px; font-size: 11px; display: flex; flex-direction: column; gap: 6px; }
+        .formula-text-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .goal-text { font-weight: bold; color: #d32f2f; background: #ffebee; padding: 2px 6px; border-radius: 4px; }
+        
+        .grade-overview { margin-top: 4px; }
+        .grade-overview-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 6px;
+            letter-spacing: -0.02em;
+        }
+        .grade-graph-container {
+            display: flex;
+            width: 100%;
+            height: 40px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #cbd5e1;
+            box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+        }
+        .grade-graph-container .g-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            color: #fff;
+            font-size: 8px;
+            font-weight: 700;
+            line-height: 1.15;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+        }
+        .g-bar-1 { width: 4%; background: linear-gradient(180deg, #dc2626, #b91c1c); }
+        .g-bar-2 { width: 7%; background: linear-gradient(180deg, #ef4444, #dc2626); }
+        .g-bar-3 { width: 12%; background: linear-gradient(180deg, #f97316, #ea580c); }
+        .g-bar-4 { width: 17%; background: linear-gradient(180deg, #fbbf24, #f59e0b); }
+        .g-bar-5 { width: 20%; background: linear-gradient(180deg, #a3e635, #84cc16); }
+        .g-bar-6 { width: 17%; background: linear-gradient(180deg, #4ade80, #22c55e); }
+        .g-bar-7 { width: 12%; background: linear-gradient(180deg, #2dd4bf, #14b8a6); }
+        .g-bar-8 { width: 7%; background: linear-gradient(180deg, #60a5fa, #3b82f6); }
+        .g-bar-9 { width: 4%; background: linear-gradient(180deg, #94a3b8, #64748b); }
+        .g-bar.is-mine {
+            outline: 2px solid #0f172a;
+            outline-offset: -2px;
+            z-index: 1;
+        }
+        .grade-graph-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px 8px;
+            margin-top: 6px;
+            font-size: 9px;
+            color: #64748b;
+        }
+        .grade-graph-legend span::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            margin-right: 3px;
+            vertical-align: -1px;
+        }
+        .legend-1::before { background: #b91c1c; }
+        .legend-2::before { background: #dc2626; }
+        .legend-3::before { background: #ea580c; }
+        .legend-4::before { background: #f59e0b; }
+        .legend-5::before { background: #84cc16; }
+        .legend-6::before { background: #22c55e; }
+        .legend-7::before { background: #14b8a6; }
+        .legend-8::before { background: #3b82f6; }
+        .legend-9::before { background: #64748b; }
+
+        .row-label { background-color: #f9f9f9; width: 90px; font-weight: bold; }
+        .symbol-up { color: #d32f2f; font-weight: bold; font-size: 16px; width: 60px; }
+        .symbol-down { color: #1976d2; font-weight: bold; font-size: 16px; width: 60px; }
+        .my-score-row { background-color: #e3f2fd; font-weight: bold; border: 2px solid #1976d2; }
+        h3 { font-size: 12px; margin: 12px 0 6px 0; border-left: 5px solid #333; padding-left: 8px; }
+
+        @media print {
+            html, body { background: white; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .search-container, .global-print-area, .no-print { display: none !important; }
+            .report-wrapper { display: block !important; margin: 0; }
+            .page { border: none; box-shadow: none; margin: 0; padding: 15mm 18mm; width: 210mm; height: 296mm; page-break-after: always; page-break-inside: avoid; overflow: hidden; }
+            .page:last-child { page-break-after: avoid !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="search-container no-print">
+        <h2 style="margin-top:0; color:#3b82f6; font-size: 22px;">학생 성적 조회 시스템 (2026 고교학점제 반영)</h2>
+
+        <div id="demoBanner" class="demo-banner">
+            <strong>예시 데이터</strong> — 처음 열면 1학년 1~10반 가상 학생(반당 25명)이 자동 적용됩니다.
+            <p>실제 엑셀을 올리면 예시는 교체됩니다. 학번 <strong>1101</strong>(1반 1번)으로 조회해 보세요.</p>
+            <div class="demo-examples">
+                <span class="demo-chip">1101 · 1반 1번</span>
+                <span class="demo-chip">3501 · 5반 1번</span>
+                <span class="demo-chip">10001 · 10반 1번</span>
+                <span class="demo-chip">1101~1125 · 1반 구간</span>
+            </div>
+        </div>
+        
+        <div class="upload-section">
+            <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="uploadExcel(this)" style="display:none;">
+            <div class="upload-box" id="uploadBox" onclick="document.getElementById('excelFile').click()">
+                <svg class="upload-icon" id="uploadIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <div class="upload-text-container">
+                    <div class="upload-title" id="uploadTitle">엑셀 성적 파일 등록하기</div>
+                    <span class="upload-desc" id="fileStatus">여기를 클릭하거나 파일을 드래그하여 불러와주세요.</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="studentId" placeholder="단일 학번 조회 (예: 1101)">
+            <button class="search-btn" onclick="searchSingleStudent()">
+                <svg style="width:18px; height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                조회 및 분석 (상세)
+            </button>
+        </div>
+
+        <div class="input-area" style="margin-top: 15px;">
+            <input type="text" id="startStudentId" placeholder="시작 학번 (예: 1101)">
+            <span style="font-size: 18px; font-weight: bold; color: #64748b;">~</span>
+            <input type="text" id="endStudentId" placeholder="끝 학번 (예: 1130)">
+            <button class="search-btn" onclick="searchStudentRange()" style="background: #10b981;">
+                <svg style="width:18px; height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                구간 조회 (배부용)
+            </button>
+        </div>
+
+        <div id="globalPrintArea" class="global-print-area no-print">
+            <button class="print-btn" onclick="window.print()">
+                <svg style="width:20px; height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                </svg>
+                결과 인쇄하기
+            </button>
+        </div>
+
+        <div id="statsDashboard" class="stats-dashboard">
+            <h3>1학년 중간고사 결과 기본 정보</h3>
+            <table class="stats-table">
+                <thead>
+                    <tr id="statsTableHead">
+                        <th class="stats-label">구분</th>
+                    </tr>
+                </thead>
+                <tbody id="statsTableBody">
+                    <tr id="statsRowUnit"><td class="stats-label">단위수</td></tr>
+                    <tr id="statsRowAvg"><td class="stats-label">평균 점수</td></tr>
+                    <tr id="statsRowMax"><td class="stats-label">최상위 점수</td></tr>
+                    <tr id="statsRowMin"><td class="stats-label">최하위 점수</td></tr>
+                    <tr id="statsRowCut1"><td class="stats-label">1등급(4%) 최저</td></tr>
+                    <tr id="statsRowCut2"><td class="stats-label">2등급(11%) 최저</td></tr>
+                    <tr id="statsRowCut3"><td class="stats-label">3등급(23%) 최저</td></tr>
+                    <tr id="statsRowCut4"><td class="stats-label">4등급(40%) 최저</td></tr>
+                    <tr id="statsRowCut5"><td class="stats-label">5등급(60%) 최저</td></tr>
+                    <tr id="statsRowCut6"><td class="stats-label">6등급(77%) 최저</td></tr>
+                    <tr id="statsRowCut7"><td class="stats-label">7등급(89%) 최저</td></tr>
+                    <tr id="statsRowCut8"><td class="stats-label">8등급(96%) 최저</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="printContainer"></div>
+
+    <div id="reportTemplate" class="report-wrapper">
+        <div class="page page-1">
+            <h1>2026학년도 1학기 중간고사 결과 보고서</h1>
+            <div class="student-info">
+                <div class="infoStudentText">학생 정보 로딩중...</div>
+                <div>평균등급: <span class="infoAvgGrade">0.00</span></div>
+            </div>
+            
+            <table class="mainScoreTable">
+                <thead>
+                    <tr class="mainTableHead"><th style="width: 15%;">교과명</th></tr>
+                </thead>
+                <tbody>
+                    <tr class="rowUnit"><th class="row-label">단위수</th></tr>
+                    <tr class="rowScore" style="height: 35px;"><th class="row-label">원점수</th></tr>
+                    <tr class="rowRank"><th class="row-label">석차(동석차수)</th></tr>
+                    <tr class="rowInterRank"><th class="row-label">중간석차</th></tr>
+                    <tr class="rowGrade" style="height: 35px; font-weight: bold;"><th class="row-label">등급</th></tr>
+                    <tr class="rowDiffUp"><th class="row-label">윗등급 차</th></tr>
+                    <tr class="rowDiffDown"><th class="row-label">아랫등급 차</th></tr>
+                </tbody>
+            </table>
+            
+            <div class="formula-compact-box">
+                <div class="formula-text-row">
+                    <div><strong>※ 윗등급 차:</strong> 상위 등급 컷 점수와의 차이</div>
+                    <div class="goal-text">목표점수(한 등급 올리기) = 원점수 + (윗등급 차 × 2) <span style="font-size: 11px; font-weight: normal; color: #555;">[최대: 1등급 컷 + 3점]</span></div>
+                </div>
+                <div class="grade-overview">
+                    <p class="grade-overview-title">한눈에 보기 · 9등급 누적 분포 (상위 4% → 하위 4%)</p>
+                    <div class="grade-graph-container" aria-label="9등급 누적 비율 막대">
+                        <div class="g-bar g-bar-1" data-grade="1"><span>1</span><span>4%</span></div>
+                        <div class="g-bar g-bar-2" data-grade="2"><span>2</span><span>7%</span></div>
+                        <div class="g-bar g-bar-3" data-grade="3"><span>3</span><span>12%</span></div>
+                        <div class="g-bar g-bar-4" data-grade="4"><span>4</span><span>17%</span></div>
+                        <div class="g-bar g-bar-5" data-grade="5"><span>5</span><span>20%</span></div>
+                        <div class="g-bar g-bar-6" data-grade="6"><span>6</span><span>17%</span></div>
+                        <div class="g-bar g-bar-7" data-grade="7"><span>7</span><span>12%</span></div>
+                        <div class="g-bar g-bar-8" data-grade="8"><span>8</span><span>7%</span></div>
+                        <div class="g-bar g-bar-9" data-grade="9"><span>9</span><span>4%</span></div>
+                    </div>
+                    <div class="grade-graph-legend">
+                        <span class="legend-1">1등급</span>
+                        <span class="legend-2">2등급</span>
+                        <span class="legend-3">3등급</span>
+                        <span class="legend-4">4등급</span>
+                        <span class="legend-5">5등급</span>
+                        <span class="legend-6">6등급</span>
+                        <span class="legend-7">7등급</span>
+                        <span class="legend-8">8등급</span>
+                        <span class="legend-9">9등급</span>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>등급별 최하점수 (9등급 컷 · <span class="total-count">-</span>명 기준)</h3>
+            <table class="cutLineTable">
+                <thead>
+                    <tr class="cutTableHead"><th class="row-label">구분</th></tr>
+                </thead>
+                <tbody>
+                    <tr class="rowCut1"><th class="row-label">1등급(4%)</th></tr>
+                    <tr class="rowCut2"><th class="row-label">2등급(11%)</th></tr>
+                    <tr class="rowCut3"><th class="row-label">3등급(23%)</th></tr>
+                    <tr class="rowCut4"><th class="row-label">4등급(40%)</th></tr>
+                    <tr class="rowCut5"><th class="row-label">5등급(60%)</th></tr>
+                    <tr class="rowCut6"><th class="row-label">6등급(77%)</th></tr>
+                    <tr class="rowCut7"><th class="row-label">7등급(89%)</th></tr>
+                    <tr class="rowCut8"><th class="row-label">8등급(96%)</th></tr>
+                </tbody>
+            </table>
+            
+            <h3>목표 점수 (한 등급 올리기 기준)</h3>
+            <table class="goalScoreTable">
+                <thead>
+                    <tr class="goalTableHead"><th class="row-label">구분</th></tr>
+                </thead>
+                <tbody>
+                    <tr class="rowGoal" style="background-color: #fff9c4; font-weight: bold; border: 2px solid #fbc02d;"><th class="row-label">목표 점수</th></tr>
+                </tbody>
+            </table>
+            
+            <h3>과목별 최고점수</h3>
+            <table class="maxScoreTable">
+                <thead>
+                    <tr class="maxTableHead"><th class="row-label">구분</th></tr>
+                </thead>
+                <tbody>
+                    <tr class="rowMax" style="background-color: #eee; font-weight: bold;"><th class="row-label">최고점수</th></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="page page-2">
+            <h1>내 성적 주변 성적 분포</h1>
+            <p style="text-align: right; font-size: 10px; margin: 0 0 5px 0;">(※ 데이터가 없는 구간은 빈칸으로 표시되며, 내 점수 기준 위로는 오름차순, 아래로는 내림차순 정렬됩니다.)</p>
+            
+            <table class="distributionTable">
+                <thead>
+                    <tr class="distTableHead"><th style="width: 12%;">구분</th></tr>
+                </thead>
+                <tbody class="distTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+// #region agent log
+const DEBUG_BUILD_ID = 'school-demo-v2-ca3adf';
+function debugLog(logLocation, message, data, hypothesisId) {
+    fetch('http://127.0.0.1:7514/ingest/21b3d564-d049-4f4d-89df-078721ff39be', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'ca3adf' },
+        body: JSON.stringify({
+            sessionId: 'ca3adf',
+            runId: 'pre-fix',
+            hypothesisId,
+            location: logLocation,
+            message,
+            data: Object.assign({ buildId: DEBUG_BUILD_ID, pageUrl: window.location.href }, data || {}),
+            timestamp: Date.now()
+        })
+    }).catch(function() {});
+}
+window.addEventListener('error', function(e) {
+    debugLog('index.html:error', 'uncaught error', { msg: e.message, line: e.lineno, col: e.colno }, 'H5');
+});
+debugLog('index.html:boot', 'script parsed', { hasLoadDemo: typeof loadDemoData }, 'H1');
+// #endregion
+
+let studentData = [];
+let isFileUploaded = false;
+let isDemoData = false;
+
+const DEMO_SUBJECTS = ['국어', '수학', '영어', '한국사', '통합사회', '통합과학'];
+const DEMO_LAST_NAMES = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임'];
+const DEMO_FIRST_NAMES = ['민준', '서연', '도윤', '지우', '예준', '하은', '주원', '지민', '시우', '수아', '현우', '지아', '건우', '서윤', '우진', '채원', '선우', '유나', '연우', '다은'];
+
+function buildStudentId(classNum, studentNum) {
+    if (classNum < 10) return `1${classNum}${String(studentNum).padStart(2, '0')}`;
+    return `10${String(studentNum).padStart(2, '0')}`;
+}
+
+function demoScoreFor(classNum, studentNum, subjectIndex) {
+    const seed = classNum * 1000 + studentNum * 17 + subjectIndex * 31;
+    const spread = (seed % 37) - 18;
+    const bases = [78, 74, 76, 72, 75, 73];
+    return Math.min(99, Math.max(42, Math.round((bases[subjectIndex] + spread + (classNum % 5)) * 100) / 100));
+}
+
+function generateDemoStudentData() {
+    const students = [];
+    let nameIdx = 0;
+    for (let c = 1; c <= 10; c++) {
+        for (let n = 1; n <= 25; n++) {
+            const row = {
+                '학번': buildStudentId(c, n),
+                '이름': DEMO_LAST_NAMES[nameIdx % DEMO_LAST_NAMES.length] + DEMO_FIRST_NAMES[nameIdx % DEMO_FIRST_NAMES.length],
+                '학년': 1,
+                '반': c,
+                '번호': n
+            };
+            DEMO_SUBJECTS.forEach((subject, si) => { row[subject] = demoScoreFor(c, n, si); });
+            students.push(row);
+            nameIdx++;
+        }
+    }
+    return students;
+}
+
+function applyLoadedStudentData(sourceLabel, isDemo) {
+    isDemoData = isDemo;
+    processAllGrades();
+    // #region agent log
+    debugLog('index.html:applyLoadedStudentData', 'after processAllGrades', {
+        studentCount: studentData.length,
+        cacheKeys: Object.keys(processedGradesCache).length,
+        statsSubjects: Object.keys(subjectStatsCache).length,
+        isDemo: isDemo
+    }, 'H3');
+    // #endregion
+    setUploadState(isDemo ? '예시 데이터 적용됨' : '데이터 분석 완료!', true, sourceLabel);
+    displayGeneralStats();
+    clearPrintContainer();
+}
+
+function loadDemoData() {
+    // #region agent log
+    debugLog('index.html:loadDemoData', 'loadDemoData start', {}, 'H1');
+    // #endregion
+    studentData = generateDemoStudentData();
+    isFileUploaded = true;
+    // #region agent log
+    debugLog('index.html:loadDemoData', 'demo generated', { count: studentData.length, sampleId: studentData[0] && studentData[0]['학번'] }, 'H1');
+    // #endregion
+    applyLoadedStudentData(`가상 예시 (${studentData.length}명 · 1~10반)`, true);
+}
+
+// 전역 캐시: 계산 부하를 줄이고 무결성을 보장하기 위해 업로드 직후 모든 등급과 석차를 미리 계산해 저장합니다.
+let processedGradesCache = {}; 
+let subjectStatsCache = {};
+
+const unitWeights = { 
+    '국어': 4, '공통국어 1': 4, 
+    '수학': 4, '공통수학 1': 4, 
+    '영어': 4, '공통영어 1': 4, 
+    '한국사 1': 3, '한국사': 3,
+    '통합사회 1': 3, '통합사회': 3,
+    '통합과학 1': 3, '통합과학': 3 
+};
+
+function getSubjects(student) { 
+    const subjects = Object.keys(student).filter(key => !['학번', '이름', '학년', '반', '번호'].includes(key)); 
+    const targetOrder = [
+        '국어', '공통국어 1', 
+        '수학', '공통수학 1', 
+        '영어', '공통영어 1', 
+        '한국사', '한국사 1', 
+        '통합사회', '통합사회 1', 
+        '통합과학', '통합과학 1'
+    ];
+    return subjects.sort((a, b) => {
+        let idxA = targetOrder.indexOf(a);
+        let idxB = targetOrder.indexOf(b);
+        if (idxA === -1) idxA = 999;
+        if (idxB === -1) idxB = 999;
+        return idxA - idxB;
+    });
+}
+
+// [핵심 엔진] 2026 고교학점제 성적 처리 규정(동석차, 중간석차, 경계 판정)을 완벽 구현하는 함수
+function processAllGrades() {
+    processedGradesCache = {};
+    subjectStatsCache = {};
+    
+    if (studentData.length === 0) return;
+    const subjects = getSubjects(studentData[0]);
+    const totalStudents = studentData.length;
+
+    // 등급 누적인원 기준 (소수 첫째 자리에서 반올림 적용)
+    const cut1Limit = Math.round(totalStudents * 0.10);
+    const cut2Limit = Math.round(totalStudents * 0.34);
+    const cut3Limit = Math.round(totalStudents * 0.66);
+    const cut4Limit = Math.round(totalStudents * 0.90);
+
+    subjects.forEach(subject => {
+        // 1. 점수를 소수 둘째 자리까지 정확히 반올림 (셋째 자리에서 반올림 처리)
+        let rawScores = studentData.map(s => {
+            let score = Number(s[subject]);
+            if (isNaN(score)) score = 0;
+            score = Math.round(score * 100) / 100;
+            return { id: String(s['학번']), score: score };
+        });
+
+        // 2. 점수 기준 내림차순 정렬
+        rawScores.sort((a, b) => b.score - a.score);
+
+        let i = 0;
+        let currentRank = 1;
+
+        while (i < rawScores.length) {
+            let j = i;
+            // 동일 점수자 파악 (동점자 자동 그룹화)
+            while (j < rawScores.length && rawScores[j].score === rawScores[i].score) { j++; }
+            
+            let tieCount = j - i;
+            let highestRank = currentRank; 
+            let lowestRank = currentRank + tieCount - 1; // 동점자 집단 최하위 석차
+            
+            let intermediateRank = highestRank + (tieCount - 1) / 2;
+            let intermediateRankPercent = (intermediateRank / totalStudents) * 100;
+
+            let grade = 5;
+
+            // 판정 STEP 2: 동점자 집단 전체가 하나의 등급 범위 안에 완전히 포함되는지 확인
+            if (lowestRank <= cut1Limit) {
+                grade = 1;
+            } else if (highestRank > cut1Limit && lowestRank <= cut2Limit) {
+                grade = 2;
+            } else if (highestRank > cut2Limit && lowestRank <= cut3Limit) {
+                grade = 3;
+            } else if (highestRank > cut3Limit && lowestRank <= cut4Limit) {
+                grade = 4;
+            } else if (highestRank > cut4Limit) {
+                grade = 5;
+            } else {
+                // 판정 STEP 3 & 4: 등급 경계를 넘어갈 경우만 중간석차백분율로 판정 (동점자 전원 동일 등급 보장)
+                if (intermediateRankPercent <= 10) grade = 1;
+                else if (intermediateRankPercent <= 34) grade = 2;
+                else if (intermediateRankPercent <= 66) grade = 3;
+                else if (intermediateRankPercent <= 90) grade = 4;
+                else grade = 5;
+            }
+
+            // 동석차 표기 문자열 생성
+            let rankStr = tieCount > 1 ? `${highestRank}(${tieCount})` : `${highestRank}`;
+
+            // 그룹 내 모든 학생에게 정보 일괄 부여
+            for (let k = i; k < j; k++) {
+                let studentId = rawScores[k].id;
+                if (!processedGradesCache[studentId]) processedGradesCache[studentId] = {};
+                
+                processedGradesCache[studentId][subject] = {
+                    score: rawScores[k].score,
+                    rank: highestRank,
+                    tieCount: tieCount,
+                    rankStr: rankStr,
+                    interRank: intermediateRank.toFixed(1),
+                    grade: grade
+                };
+            }
+            currentRank += tieCount;
+            i = j;
+        }
+
+        // 전체 통계(평균, 최고, 최저 및 커트라인 산출)
+        let allScoresOnly = rawScores.map(s => s.score);
+        let sum = allScoresOnly.reduce((a, b) => a + b, 0);
+        let avg = (sum / totalStudents).toFixed(1);
+        let max = Math.max(...allScoresOnly).toFixed(1);
+        let min = Math.min(...allScoresOnly).toFixed(1);
+
+        // 각 등급별로 부여받은 인원들의 최저점 계산 (경계선 방어를 마친 실질적 커트라인)
+        let gradeScores = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+        rawScores.forEach(s => { gradeScores[processedGradesCache[s.id][subject].grade].push(s.score); });
+        
+        let c1 = gradeScores[1].length > 0 ? Math.min(...gradeScores[1]).toFixed(1) : "-";
+        let c2 = gradeScores[2].length > 0 ? Math.min(...gradeScores[2]).toFixed(1) : "-";
+        let c3 = gradeScores[3].length > 0 ? Math.min(...gradeScores[3]).toFixed(1) : "-";
+        let c4 = gradeScores[4].length > 0 ? Math.min(...gradeScores[4]).toFixed(1) : "-";
+
+        subjectStatsCache[subject] = {
+            avg: avg, max: max, min: min, 
+            cut1: c1, cut2: c2, cut3: c3, cut4: c4,
+            allScoresSorted: allScoresOnly
+        };
+    });
+}
+
+function displayGeneralStats() {
+    // #region agent log
+    debugLog('index.html:displayGeneralStats', 'entry', { studentCount: studentData.length }, 'H4');
+    // #endregion
+    if (studentData.length === 0) {
+        // #region agent log
+        debugLog('index.html:displayGeneralStats', 'early return empty data', {}, 'H4');
+        // #endregion
+        return;
+    }
+    
+    const subjects = getSubjects(studentData[0]);
+    
+    document.getElementById('statsTableHead').innerHTML = '<th class="stats-label">구분</th>';
+    document.getElementById('statsRowUnit').innerHTML = '<td class="stats-label">단위수</td>';
+    document.getElementById('statsRowAvg').innerHTML = '<td class="stats-label">평균 점수</td>';
+    document.getElementById('statsRowMax').innerHTML = '<td class="stats-label">최상위 점수</td>';
+    document.getElementById('statsRowMin').innerHTML = '<td class="stats-label">최하위 점수</td>';
+    document.getElementById('statsRowCut1').innerHTML = '<td class="stats-label">1컷 (10%) 최저</td>';
+    document.getElementById('statsRowCut2').innerHTML = '<td class="stats-label">2컷 (34%) 최저</td>';
+    document.getElementById('statsRowCut3').innerHTML = '<td class="stats-label">3컷 (66%) 최저</td>';
+    document.getElementById('statsRowCut4').innerHTML = '<td class="stats-label">4컷 (90%) 최저</td>';
+
+    subjects.forEach(subject => {
+        const th = document.createElement('th');
+        th.textContent = subject;
+        document.getElementById('statsTableHead').appendChild(th);
+
+        const stats = subjectStatsCache[subject];
+        const unit = unitWeights[subject] || 3;
+
+        appendStatsTd('statsRowUnit', unit);
+        appendStatsTd('statsRowAvg', stats.avg, 'highlight-blue');
+        appendStatsTd('statsRowMax', stats.max, 'highlight-red');
+        appendStatsTd('statsRowMin', stats.min);
+        appendStatsTd('statsRowCut1', stats.cut1);
+        appendStatsTd('statsRowCut2', stats.cut2);
+        appendStatsTd('statsRowCut3', stats.cut3);
+        appendStatsTd('statsRowCut4', stats.cut4);
+    });
+
+    const dash = document.getElementById('statsDashboard');
+    dash.style.display = 'block';
+    // #region agent log
+    debugLog('index.html:displayGeneralStats', 'dashboard shown', {
+        subjectCount: subjects.length,
+        display: dash.style.display,
+        hasDemoBanner: !!document.getElementById('demoBanner')
+    }, 'H4');
+    // #endregion
+}
+
+function appendStatsTd(rowId, text, className = '') {
+    const td = document.createElement('td');
+    td.textContent = text;
+    if (className) td.className = className;
+    document.getElementById(rowId).appendChild(td);
+}
+
+function uploadExcel(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const parsedData = XLSX.utils.sheet_to_json(worksheet);
+            
+            if(parsedData.length > 0 && parsedData[0]['학번']) {
+                studentData = parsedData;
+                isFileUploaded = true;
+                applyLoadedStudentData(file.name, false);
+            } else {
+                isFileUploaded = false;
+                studentData = [];
+                setUploadState("유효한 성적 데이터가 없거나 올바른 양식이 아닙니다.", false);
+                document.getElementById('statsDashboard').style.display = 'none';
+                clearPrintContainer();
+            }
+        } catch (error) {
+            console.error(error);
+            isFileUploaded = false;
+            studentData = [];
+            setUploadState("파일을 읽는 중 오류가 발생했습니다.", false);
+            document.getElementById('statsDashboard').style.display = 'none';
+            clearPrintContainer();
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function setUploadState(statusText, isSuccess, fileName = "") {
+    const uploadBox = document.getElementById('uploadBox');
+    const uploadTitle = document.getElementById('uploadTitle');
+    const fileStatus = document.getElementById('fileStatus');
+    if (isSuccess) {
+        uploadBox.classList.add('success');
+        uploadTitle.textContent = isDemoData
+            ? "예시 데이터 적용 중 (고교학점제 규정 시연)"
+            : "성적 데이터 분석 완료! (고교학점제 규정 적용)";
+        fileStatus.textContent = isDemoData
+            ? `▶ ${fileName} · 엑셀 업로드 시 실제 데이터로 교체`
+            : `▶ ${fileName} 등록 성공 (${studentData.length}명)`;
+    } else {
+        uploadBox.classList.remove('success');
+        uploadTitle.textContent = "엑셀 성적 파일 등록하기";
+        fileStatus.textContent = statusText;
+    }
+}
+
+function clearPrintContainer() {
+    document.getElementById('printContainer').innerHTML = '';
+    document.getElementById('globalPrintArea').style.display = 'none';
+}
+
+// 헬퍼 함수: 특정 요소 안에 th, td 자식 추가
+function appendThNode(parentEl, text) { 
+    const th = document.createElement('th'); th.textContent = text; parentEl.appendChild(th); 
+}
+function appendTdNode(parentEl, text) { 
+    const td = document.createElement('td'); td.textContent = text; parentEl.appendChild(td); 
+}
+
+// 핵심 데이터 삽입 함수 (이제 원본이 아닌 '복사본 DOM 객체'를 받아 수정합니다)
+function populateTemplate(studentIdStr, clonePage) {
+    if (!isFileUploaded || studentData.length === 0) return false;
+
+    const student = studentData.find(s => String(s['학번']) === studentIdStr);
+    if (!student) return false;
+
+    const subjects = getSubjects(student);
+    const totalStudents = studentData.length;
+
+    clonePage.querySelectorAll('.total-count').forEach(el => el.textContent = totalStudents);
+
+    let strId = String(studentIdStr);
+    let sGrade = student['학년'] || strId.charAt(0);
+    let sClass = student['반'] || Number(strId.substring(1, strId.length - 2));
+    let sNum = student['번호'] || Number(strId.substring(strId.length - 2));
+
+    clonePage.querySelector('.infoStudentText').textContent = `${sGrade}학년 ${sClass}반 ${sNum}번 이름 ${student['이름']} 학생의 성적`;
+
+    let totalWeight = 0;
+    let weightedGradeSum = 0;
+
+    subjects.forEach(subject => {
+        // 복제된 테이블 헤더들에 과목명 추가
+        appendThNode(clonePage.querySelector('.mainTableHead'), subject); 
+        appendThNode(clonePage.querySelector('.cutTableHead'), subject); 
+        appendThNode(clonePage.querySelector('.goalTableHead'), subject); 
+        appendThNode(clonePage.querySelector('.maxTableHead'), subject); 
+        if (clonePage.querySelector('.distTableHead')) {
+            appendThNode(clonePage.querySelector('.distTableHead'), subject);
+        }
+
+        // 캐시된 엔진 처리 데이터 가져오기
+        const pData = processedGradesCache[studentIdStr][subject];
+        const stats = subjectStatsCache[subject];
+        const unit = unitWeights[subject] || 3;
+        
+        totalWeight += unit; 
+        weightedGradeSum += (pData.grade * unit);
+
+        // 상위/하위 등급 차이 및 목표치 계산
+        let diffUp = '-', diffDown = '-', goalValue = '-';
+        if (pData.grade === 1) {
+            diffDown = stats.cut1 !== "-" ? (pData.score - Number(stats.cut1)).toFixed(1) : '-';
+        } else {
+            let upperCut = 0;
+            if (pData.grade === 2) { upperCut = Number(stats.cut1); diffDown = stats.cut2 !== "-" ? (pData.score - Number(stats.cut2)).toFixed(1) : '-'; }
+            else if (pData.grade === 3) { upperCut = Number(stats.cut2); diffDown = stats.cut3 !== "-" ? (pData.score - Number(stats.cut3)).toFixed(1) : '-'; }
+            else if (pData.grade === 4) { upperCut = Number(stats.cut3); diffDown = stats.cut4 !== "-" ? (pData.score - Number(stats.cut4)).toFixed(1) : '-'; }
+            else { upperCut = Number(stats.cut4); diffDown = '-'; }
+            
+            if (upperCut > 0) {
+                diffUp = (upperCut - pData.score).toFixed(1);
+                let calcGoal = pData.score + (Number(diffUp) * 2);
+                let finalGoal = Math.min(calcGoal, Number(stats.cut1) + 3, 100); 
+                goalValue = finalGoal.toFixed(2) + " 점";
+            }
+        }
+
+        // 복제된 행(tr)들에 셀(td) 데이터 추가
+        appendTdNode(clonePage.querySelector('.rowUnit'), unit); 
+        appendTdNode(clonePage.querySelector('.rowScore'), pData.score.toFixed(2)); 
+        appendTdNode(clonePage.querySelector('.rowRank'), pData.rankStr); 
+        appendTdNode(clonePage.querySelector('.rowInterRank'), pData.interRank); 
+        appendTdNode(clonePage.querySelector('.rowGrade'), pData.grade); 
+        appendTdNode(clonePage.querySelector('.rowDiffUp'), diffUp); 
+        appendTdNode(clonePage.querySelector('.rowDiffDown'), diffDown);
+        appendTdNode(clonePage.querySelector('.rowCut1'), stats.cut1); 
+        appendTdNode(clonePage.querySelector('.rowCut2'), stats.cut2); 
+        appendTdNode(clonePage.querySelector('.rowCut3'), stats.cut3); 
+        appendTdNode(clonePage.querySelector('.rowCut4'), stats.cut4);
+        appendTdNode(clonePage.querySelector('.rowGoal'), goalValue); 
+        appendTdNode(clonePage.querySelector('.rowMax'), stats.max);
+    });
+
+    clonePage.querySelector('.infoAvgGrade').textContent = (weightedGradeSum / totalWeight).toFixed(2);
+    
+    // 성적 분포 로직 (2페이지가 있을 경우에만 실행)
+    const distBody = clonePage.querySelector('.distTableBody'); 
+    if (distBody) {
+        distBody.innerHTML = '';
+        let upperRows = [[], [], [], [], []]; 
+        let lowerRows = [[], [], [], [], []]; 
+
+        subjects.forEach(subject => {
+            const pData = processedGradesCache[studentIdStr][subject];
+            const allScores = subjectStatsCache[subject].allScoresSorted;
+            const myIdx = allScores.indexOf(pData.score);
+            let ups = allScores.slice(0, myIdx).reverse(); 
+            let downs = allScores.slice(myIdx + pData.tieCount); 
+
+            for(let i=0; i<5; i++) { upperRows[4-i].push(ups[i] !== undefined ? ups[i].toFixed(2) : ''); }
+            for(let i=0; i<5; i++) { lowerRows[i].push(downs[i] !== undefined ? downs[i].toFixed(2) : ''); }
+        });
+
+        for(let i=0; i<5; i++) {
+            let tr = document.createElement('tr'); tr.innerHTML = `<td class="symbol-up">▴</td>`;
+            upperRows[i].forEach(val => { tr.innerHTML += `<td>${val}</td>`; }); distBody.appendChild(tr);
+        }
+        let myTr = document.createElement('tr'); myTr.className = 'my-score-row'; myTr.innerHTML = `<td>내 점수</td>`;
+        subjects.forEach(subject => { myTr.innerHTML += `<td>${processedGradesCache[studentIdStr][subject].score.toFixed(2)}</td>`; }); distBody.appendChild(myTr);
+        for(let i=0; i<5; i++) {
+            let tr = document.createElement('tr'); tr.innerHTML = `<td class="symbol-down">▾</td>`;
+            lowerRows[i].forEach(val => { tr.innerHTML += `<td>${val}</td>`; }); distBody.appendChild(tr);
+        }
+    }
+    return true;
+}
+
+// 템플릿 복제 함수
+function createFreshTemplate(isRangeSearch) {
+    const template = document.getElementById('reportTemplate');
+    const clone = template.cloneNode(true);
+    clone.style.display = 'block';
+    clone.removeAttribute('id'); // 복사본의 id 충돌 방지
+    
+    // 구간 조회일 경우 분포표(2페이지) 삭제 옵션
+    if (isRangeSearch) {
+        const page2 = clone.querySelector('.page-2');
+        if (page2) page2.remove();
+    }
+    return clone;
+}
+
+function searchSingleStudent() {
+    if (!isFileUploaded || studentData.length === 0) { alert("엑셀 성적 파일을 먼저 등록해주세요."); return; }
+    const studentId = document.getElementById('studentId').value.trim();
+    if (!studentId) { alert("학번을 입력해주세요."); return; }
+
+    const printContainer = document.getElementById('printContainer');
+    printContainer.innerHTML = ''; // 기존 결과 지우기 (새로고침 효과)
+
+    const myTemplate = createFreshTemplate(false);
+
+    if (!populateTemplate(studentId, myTemplate)) { 
+        alert("해당 학번의 학생을 찾을 수 없습니다."); 
+        return; 
+    }
+    
+    printContainer.appendChild(myTemplate);
+    document.getElementById('globalPrintArea').style.display = 'block';
+}
+
+function searchStudentRange() {
+    if (!isFileUploaded || studentData.length === 0) { alert("엑셀 성적 파일을 먼저 등록해주세요."); return; }
+    const startIdStr = document.getElementById('startStudentId').value.trim();
+    const endIdStr = document.getElementById('endStudentId').value.trim();
+    if (!startIdStr || !endIdStr) { alert("시작 학번과 끝 학번을 모두 입력해주세요."); return; }
+    
+    const startId = parseInt(startIdStr, 10);
+    const endId = parseInt(endIdStr, 10);
+    if (isNaN(startId) || isNaN(endId) || startId > endId) { alert("올바른 학번 구간을 입력해주세요."); return; }
+
+    const printContainer = document.getElementById('printContainer');
+    printContainer.innerHTML = ''; // 기존 결과 지우기 (새로고침 효과)
+    
+    let addedCount = 0;
+    
+    for (let id = startId; id <= endId; id++) {
+        const student = studentData.find(s => parseInt(s['학번'], 10) === id);
+        if (student) {
+            const rangeTemplate = createFreshTemplate(true);
+            populateTemplate(String(student['학번']), rangeTemplate);
+            printContainer.appendChild(rangeTemplate);
+            addedCount++;
+        }
+    }
+    
+    if (addedCount === 0) { 
+        alert("해당 구간 내에 학생 데이터가 없습니다."); 
+        return; 
+    }
+    
+    document.getElementById('globalPrintArea').style.display = 'block';
+}
+
+document.getElementById('studentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') searchSingleStudent(); });
+document.getElementById('startStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('endStudentId').focus(); });
+document.getElementById('endStudentId').addEventListener('keydown', function(e) { if (e.key === 'Enter') searchStudentRange(); });
+
+document.addEventListener('DOMContentLoaded', function() {
+    // #region agent log
+    debugLog('index.html:DOMContentLoaded', 'fired', { readyState: document.readyState }, 'H1');
+    // #endregion
+    loadDemoData();
+});
+</script>
+
+</body>
+</html>
